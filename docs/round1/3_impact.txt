@@ -1,0 +1,21 @@
+Who benefits:
+1. Citizens who cannot apply on their own: elderly people applying for pensions, widows, people with disabilities, and anyone who doesn't read the portal's language. They are the ones who lose wages and bus fare every time an application comes back.
+2. Form-filling operators: CSC operators, bank mitras and ASHA workers. They are paid per form, so time spent retyping and fixing rejected forms is income lost.
+3. Welfare departments: fewer incorrect applications means less manual checking and fewer appeals.
+
+What changes for them:
+- Before: the citizen explains in Awadhi, the operator translates in their head and types into an English portal, and nobody reads the final form back to her. A spelling difference between Aadhaar and passbook is discovered weeks later as a rejection, and she comes back again.
+- After: the two simply talk. The form fills itself while they speak. Mismatches, age cutoffs and missing documents are caught at the counter, while the citizen and her documents are still there, and fixed with one spoken question. She hears every detail read back in her language and says "haan" before anything is filed.
+- For the citizen: one visit instead of several, and for the first time she knows exactly what was submitted in her name.
+- For the operator: less typing and fewer rejected forms, so more citizens served per day and more income.
+- It scales by adding forms, not people: each new scheme (scholarship, ration card, crop insurance) is one schema file, and it reaches citizens through operators who already exist in every block.
+
+How we'd know (what we will measure):
+1. Time per application: stopwatch timings of the same form at a CSC, done the usual way and with Bol Ke Bharo. Target: at least 40% faster.
+2. Errors caught before submission: how many name mismatches, wrong ages and missing documents the guard catches that the usual process missed. Every catch is one rejection avoided.
+3. Accuracy: on recorded test conversations (with consent, in Hindi, Hinglish and Awadhi, including noisy ones), the share of fields filled correctly. Target: 85% or more, with the read-back catching most of the rest.
+4. Rejections and repeat visits: in a one-week pilot with one or two operators, compare the rejection rate and the number of repeat visits with their previous weeks.
+5. Trust: after the read-back, ask the citizen one question: "Kya aapko pata hai form mein kya bhara gaya?" (Do you know what was filled in your form?)
+6. Willingness to pay: whether operators would pay a small monthly fee, since faster forms mean more income for them.
+
+We are starting with old-age pensions in one district, then expanding scheme by scheme as each measure holds up.

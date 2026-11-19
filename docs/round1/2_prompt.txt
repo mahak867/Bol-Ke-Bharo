@@ -1,0 +1,24 @@
+Build a working web prototype called "Bol Ke Bharo" (speak it, it's filled): a voice co-pilot that fills an old-age pension application from a natural conversation between a form-filling operator and a citizen. It runs in Chrome on a laptop or phone at a CSC counter.
+
+Your users and their languages: Two people share one device. The OPERATOR (CSC operator, bank mitra or ASHA worker) reads Hindi and some English and controls the screen. The CITIZEN (aged 60+, often a rural woman, may not read at all) only speaks and listens. Both speak Hindi, Hinglish or a dialect such as Awadhi or Bhojpuri, with strong regional accents, and mix in English words like "bank". Every spoken prompt is simple Hindi: short sentences, one question at a time, polite "aap".
+
+The voice flow, step by step:
+1. The operator taps "New application". A timer starts and the app greets the citizen aloud: "Namaste. Main aapka pension form bharne mein madad karungi."
+2. Two large buttons, "Operator bol rahe hain" and "Citizen bol rahi hain", start speech recognition (hi-IN) and tag each segment with the speaker. A text box is always available as a fallback.
+3. After each segment, send the transcript, the speaker, the recent conversation and the current form state to an LLM. It returns strict JSON: a list of {field, value, confidence 0-1, exact words it came from}. It must never invent values that were not said.
+4. Fields: name as on Aadhaar, father's or husband's name, age, gender, district, village, 10-digit mobile, last 4 digits of Aadhaar only, name on bank passbook, IFSC, annual family income, and whether an age proof is available. Each field appears on screen as soon as it is heard.
+5. After every turn the app decides the next thing to say, in this order: (a) a rejection risk not yet asked about, (b) the next missing field, (c) a low-confidence value to confirm, (d) the full read-back.
+6. Rejection guard rules, defined in the form's JSON schema: the name on Aadhaar must exactly match the name on the passbook, the age must be at least 60, and an age proof must exist. If the citizen says "Ramvati" for Aadhaar and "Ram Wati" for the passbook, the app asks aloud: "Aadhaar par naam Ramvati hai, lekin passbook par Ram Wati. Kaunsa sahi hai?"
+7. When all fields are filled, it reads every field back aloud and asks: "Kya sab sahi hai? Haan ya na?" A "haan" is saved with a timestamp as the citizen's consent. A "na" sends it back to ask which detail is wrong. Any change after the read-back needs a new read-back.
+8. Only after consent, "Export for portal" produces the final JSON for a browser extension, which types it into the portal. A person always does the captcha, the OTP and the final submit.
+
+What the product says or shows back: It speaks every question and the read-back through text-to-speech (hi-IN, slightly slow). The screen shows the current question in large text, the conversation log, and the form with each value, its confidence and its source words. Low-confidence fields are highlighted yellow and rejection risks appear in an orange banner. The operator can tap any field to type a correction. A status chip shows "Collecting", "Waiting for haan" or "Citizen confirmed", and the timer shows minutes taken. A footer says: "Independent assistant, not a government service."
+
+Noise, accents, mixed languages and misheard input:
+- Noise: CSC counters are loud. Only finalised speech segments are processed. Garbled segments change nothing; the app repeats its question.
+- Accents and dialects: the LLM is told the input may be Awadhi or Bhojpuri with recognition errors. It normalises spoken numbers ("sattar saal" becomes 70), writes names in Latin script exactly as spelled, and gives low confidence when unsure.
+- Mixed languages: Hindi, English and Hinglish in one sentence are normal. Field values are normalised (mobile to 10 digits, IFSC to capitals without spaces).
+- Misheard input: every value is validated by type and pattern. A 9-digit mobile number or an impossible IFSC is rejected and asked again. Any value below 0.7 confidence is confirmed aloud: "Maine suna Fatehpur. Kya yeh sahi hai?" A "na" clears it and asks again. Corrections like "nahi, 72 saal" overwrite the old value and mark it as corrected.
+- Privacy: a full 12-digit Aadhaar number is masked to the last 4 digits before it reaches the LLM or the screen. If anyone says OTP, PIN or password, it is never captured. No audio is stored; sessions are deleted after 30 idle minutes.
+
+Tech: Python FastAPI backend, single-page frontend, browser Web Speech API, and one JSON schema per form, so a new form needs only a new file.
