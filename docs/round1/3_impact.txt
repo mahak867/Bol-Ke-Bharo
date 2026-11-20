@@ -1,21 +1,12 @@
-Who benefits:
-1. Citizens who cannot apply on their own: elderly people applying for pensions, widows, people with disabilities, and anyone who doesn't read the portal's language. They are the ones who lose wages and bus fare every time an application comes back.
-2. Form-filling operators: CSC operators, bank mitras and ASHA workers. They are paid per form, so time spent retyping and fixing rejected forms is income lost.
-3. Welfare departments: fewer incorrect applications means less manual checking and fewer appeals.
+Who benefits, and roughly how many: About 3 crore elderly people, widows and people with disabilities receive central pensions under the National Social Assistance Programme (about 2.2 crore old-age pensioners alone, per a November 2025 government reply in Parliament). Most cannot fill an online form themselves, so they depend on intermediaries: India has about 5.67 lakh functional Common Service Centres (MeitY, October 2025), plus bank mitras and ASHA workers. Bol Ke Bharo serves both sides of that counter: the citizen who loses wages and bus fare on every repeat visit, and the operator who is paid per form and loses income on every slow or rejected one. We start with old-age pensions in one district.
 
-What changes for them:
-- Before: the citizen explains in Awadhi, the operator translates in their head and types into an English portal, and nobody reads the final form back to her. A spelling difference between Aadhaar and passbook is discovered weeks later as a rejection, and she comes back again.
-- After: the two simply talk. The form fills itself while they speak. Mismatches, age cutoffs and missing documents are caught at the counter, while the citizen and her documents are still there, and fixed with one spoken question. She hears every detail read back in her language and says "haan" before anything is filed.
-- For the citizen: one visit instead of several, and for the first time she knows exactly what was submitted in her name.
-- For the operator: less typing and fewer rejected forms, so more citizens served per day and more income.
-- It scales by adding forms, not people: each new scheme (scholarship, ration card, crop insurance) is one schema file, and it reaches citizens through operators who already exist in every block.
+What changes compared with today: Today the citizen explains in Awadhi, the operator translates in their head and types into an English portal, and nobody reads the form back to her. A spelling difference such as "Ramvati" on Aadhaar and "Ram Wati" on the passbook surfaces weeks later as a rejection, and she comes back again. With Bol Ke Bharo, they simply talk and the form fills itself. Name mismatches, age cutoffs and missing documents are caught at the counter, while she and her documents are still there, and fixed with one spoken question. She hears every detail read back in her language and says "haan" before anything is filed. She needs one visit instead of several. For the operator, it means less typing and fewer rejections, so more citizens served per day. Each new scheme (scholarships, ration cards, crop insurance) is one schema file, delivered through operators who already exist in every block.
 
-How we'd know (what we will measure):
-1. Time per application: stopwatch timings of the same form at a CSC, done the usual way and with Bol Ke Bharo. Target: at least 40% faster.
-2. Errors caught before submission: how many name mismatches, wrong ages and missing documents the guard catches that the usual process missed. Every catch is one rejection avoided.
-3. Accuracy: on recorded test conversations (with consent, in Hindi, Hinglish and Awadhi, including noisy ones), the share of fields filled correctly. Target: 85% or more, with the read-back catching most of the rest.
-4. Rejections and repeat visits: in a one-week pilot with one or two operators, compare the rejection rate and the number of repeat visits with their previous weeks.
-5. Trust: after the read-back, ask the citizen one question: "Kya aapko pata hai form mein kya bhara gaya?" (Do you know what was filled in your form?)
-6. Willingness to pay: whether operators would pay a small monthly fee, since faster forms mean more income for them.
+How we'd know it worked:
+1. Time per application, by stopwatch at a CSC, the usual way and with Bol Ke Bharo. Target: at least 40% faster.
+2. Field accuracy on recorded, consented test conversations in Hindi, Hinglish and Awadhi, including noisy ones. Target: 85% or more before read-back, and over 98% after read-back and correction.
+3. Errors caught before submission that the usual process missed. Target: at least one rejection-causing error caught per 10 applications.
+4. In a one-week pilot with one or two operators: rejections and repeat visits compared with their previous weeks. Target: half as many.
+5. Trust: after read-back, asking the citizen "Kya aapko pata hai form mein kya bhara gaya?" Target: 9 in 10 say yes.
 
-We are starting with old-age pensions in one district, then expanding scheme by scheme as each measure holds up.
+The main risk: Speech recognition is weakest for exactly our users: elderly voices, strong dialects and noisy counters. A misheard name or number on a government form is worse than no tool at all. We limit this in three ways: every value carries a confidence score and doubtful ones are confirmed aloud, nothing is exported without the full spoken read-back and "haan", and the operator can correct any field by tapping it. A second risk is adoption: operators will only switch if it is clearly faster than typing, which is why time per form is our first measure.
