@@ -132,3 +132,13 @@ def test_api_roundtrip(monkeypatch):
     assert c.get(f"/api/sessions/{s['session_id']}/export").status_code == 409
     assert c.post("/api/sessions", json={"form_id": "../etc"}).status_code == 404
     assert c.get("/").status_code == 200
+
+
+def test_greeting_and_garbled_repeat():
+    s = SessionStore().create(load_schema("pension_up"))
+    assert s.say.startswith("नमस्ते") and "नाम" in s.say
+    ex = Scripted([ups(), ups()])
+    s.add_turn("citizen", "khhshh", ex)
+    assert s.say.startswith("माफ़ कीजिए") and "नाम" in s.say
+    s.add_turn("citizen", "hmm", ex)
+    assert s.say.count("माफ़ कीजिए") == 1      # no stacking of apologies

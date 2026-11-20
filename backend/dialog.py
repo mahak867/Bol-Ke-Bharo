@@ -56,6 +56,14 @@ class Session:
                 self.meta.pop(self.pending_confirm, None)
                 self.pending_confirm = None
 
+        # Nothing usable from the citizen (noise, garbled speech): repeat the question.
+        if speaker == "citizen" and not result.updates and not result.consent:
+            sorry = self.schema.get("not_heard", {}).get("hi", "")
+            last = self.say[len(sorry):].strip() if sorry and self.say.startswith(sorry) else self.say
+            self.say = f"{sorry} {last}".strip()
+            self.transcript.append(f"ASSISTANT: {self.say}")
+            return
+
         changed = False
         for up in result.updates:
             before = self.values.get(up.key)
@@ -176,7 +184,8 @@ class SessionStore:
     def create(self, schema: dict) -> Session:
         self.purge()
         s = Session(schema)
-        s.say = s.next_prompt()
+        greeting = schema.get("greeting", {}).get("hi", "")
+        s.say = f"{greeting} {s.next_prompt()}".strip()
         s.transcript.append(f"ASSISTANT: {s.say}")
         self._sessions[s.id] = s
         return s

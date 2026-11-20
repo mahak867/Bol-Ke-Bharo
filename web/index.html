@@ -73,8 +73,8 @@ pre { background: var(--bg); padding: 10px; border-radius: 8px; overflow: auto; 
     <h2>Conversation</h2>
     <div class="say" id="say">…</div>
     <div class="mics">
-      <button class="mic op" id="micOp">🎙 Operator</button>
-      <button class="mic cit" id="micCit">🎙 Citizen</button>
+      <button class="mic op" id="micOp">🎙 Operator bol rahe hain</button>
+      <button class="mic cit" id="micCit">🎙 Citizen bol rahi hain</button>
     </div>
     <div class="interim" id="interim"></div>
     <form class="typed" id="typed">
@@ -125,7 +125,7 @@ function render(s) {
   if (s.say !== prevSay) speak(s.say);
   $("status").innerHTML =
     `<span class="pill">${s.fields.filter((f) => f.value !== null).length}/${s.fields.length} filled</span>` +
-    `<span class="pill ${s.phase === "done" ? "done" : ""}">${{ collect: "Collecting", readback: "Read-back: waiting for हाँ", done: "Citizen confirmed ✓" }[s.phase]}</span>`;
+    `<span class="pill ${s.phase === "done" ? "done" : ""}">${{ collect: "Collecting", readback: "Waiting for haan", done: "Citizen confirmed ✓" }[s.phase]}</span>`;
   $("warnings").innerHTML = s.warnings.map((w) => `<div class="warn">⚠ ${esc(w.message)}</div>`).join("");
   $("form").innerHTML = s.fields.map((f) => {
     const low = f.value !== null && f.confidence < 0.7;
