@@ -277,5 +277,13 @@ class SessionStore:
         self.purge()
         return self._sessions[sid]
 
+    def latest_confirmed(self) -> "Session":
+        """Most recently touched session whose citizen said "हाँ" (for the portal extension)."""
+        self.purge()
+        done = [s for s in self._sessions.values() if s.consent and s.consent["answer"] == "yes"]
+        if not done:
+            raise KeyError("no confirmed application")
+        return max(done, key=lambda s: s.touched)
+
     def delete(self, sid: str):
         self._sessions.pop(sid, None)

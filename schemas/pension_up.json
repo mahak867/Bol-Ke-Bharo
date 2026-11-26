@@ -118,7 +118,8 @@
         "jila",
         "zila",
         "district"
-      ]
+      ],
+      "portal_script": "latin"
     },
     {
       "key": "village",
@@ -140,7 +141,8 @@
         "gaon",
         "village",
         "मोहल्ला"
-      ]
+      ],
+      "portal_script": "latin"
     },
     {
       "key": "mobile",

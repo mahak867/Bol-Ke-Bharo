@@ -209,7 +209,8 @@ def test_export_has_portal_spelling():
     s = _filled(name="रामवती", bank_account_name="रामवती", village="फतेहपुर")
     s.add_turn("citizen", "हाँ", Scripted([ups(consent="yes")]))
     out = s.export()["portal_values"]
-    assert out["name"] == "Ramvati" and out["village"] == "फतेहपुर"   # only name fields are romanised
+    assert out["name"] == "Ramvati" and out["village"] == "Fatehpur"
+    assert out["age"] == 68                                          # non-text values untouched
 
 
 def test_voice_edit_command_reasks_one_field():
@@ -230,3 +231,21 @@ def test_voice_edit_picks_most_specific_field():
 def test_place_name_containing_edit_word_is_not_a_command():
     s = SessionStore().create(load_schema("pension_up"))
     assert s._edit_command("बदलापुर गाँव") is None
+
+
+def test_extension_fill_script_matches_web_copy():
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    assert (root / "extension/fill.js").read_text() == (root / "web/fill.js").read_text()
+
+
+def test_latest_confirmed_for_extension():
+    store = SessionStore()
+    s = store.create(load_schema("pension_up"))
+    s.add_turn("citizen", "x", Scripted([ups(**FULL, bank_account_name="Ramvati")]))
+    try:
+        store.latest_confirmed(); assert False
+    except KeyError:
+        pass
+    s.add_turn("citizen", "हाँ", Scripted([ups(consent="yes")]))
+    assert store.latest_confirmed().export()["portal_values"]["name"] == "Ramvati"

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice portal</title>
+<style>
+/* Deliberately plain: a stand-in for a typical state welfare portal form. No government branding. */
+:root { --bg: #f4f4f4; --panel: #fff; --ink: #222; --muted: #666; --line: #bbb; --hl: #fff3c4; --ok: #2f7a4d; --stamp: #2d4b9a; }
+@media (prefers-color-scheme: dark) { :root { --bg: #1b1b1b; --panel: #262626; --ink: #eee; --muted: #aaa; --line: #555; --hl: #4a3f12; --ok: #7fcf9d; --stamp: #8ea6ec; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 Arial, Helvetica, sans-serif; }
+.banner { background: #555; color: #fff; padding: 8px 16px; font-size: 14px; }
+.wrap { max-width: 760px; margin: 18px auto; padding: 0 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); padding: 18px 20px; }
+h1 { font-size: 19px; margin: 0 0 4px; } .sub { color: var(--muted); margin: 0 0 14px; font-size: 13px; }
+.row { display: grid; grid-template-columns: 220px 1fr; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px dotted var(--line); }
+@media (max-width: 600px) { .row { grid-template-columns: 1fr; gap: 4px; } }
+label { font-size: 14px; } label i { color: #c00; font-style: normal; }
+input, select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); width: 100%; transition: background .6s; }
+input[type=checkbox] { width: auto; }
+.filled { background: var(--hl) !important; }
+.human { border: 2px dashed var(--stamp); padding: 10px 12px; margin-top: 14px; }
+.human strong { color: var(--stamp); }
+.captcha { font: 700 20px monospace; letter-spacing: 6px; background: repeating-linear-gradient(45deg,#ddd,#ddd 4px,#eee 4px,#eee 8px); color: #333; padding: 4px 10px; display: inline-block; }
+button { font: inherit; padding: 8px 18px; margin-top: 12px; cursor: pointer; }
+.status { margin: 12px 0 0; font-weight: 700; color: var(--ok); min-height: 1.4em; }
+</style>
+</head>
+<body>
+<div class="banner">Practice portal for demos. Not a government website. No data is sent anywhere.</div>
+<div class="wrap">
+  <div class="panel">
+    <h1>Old Age Pension: New Application</h1>
+    <p class="sub">All fields marked * are mandatory. Name must match Aadhaar and bank records exactly.</p>
+    <form id="portal" onsubmit="event.preventDefault(); document.getElementById('status').textContent = 'Practice portal: nothing was submitted.';">
+      <div class="row"><label for="applicantName">Applicant Name (as per Aadhaar) <i>*</i></label><input id="applicantName"></div>
+      <div class="row"><label for="guardianName">Father's / Husband's Name <i>*</i></label><input id="guardianName"></div>
+      <div class="row"><label for="age">Age (years) <i>*</i></label><input id="age" inputmode="numeric"></div>
+      <div class="row"><label for="gender">Gender <i>*</i></label><select id="gender"><option value="">-- Select --</option><option value="F">Female</option><option value="M">Male</option><option value="O">Other</option></select></div>
+      <div class="row"><label for="district">District <i>*</i></label><input id="district"></div>
+      <div class="row"><label for="village">Village / Ward <i>*</i></label><input id="village"></div>
+      <div class="row"><label for="mobile">Mobile Number <i>*</i></label><input id="mobile" inputmode="numeric"></div>
+      <div class="row"><label for="aadhaarLast4">Aadhaar (last 4 digits) <i>*</i></label><input id="aadhaarLast4" inputmode="numeric"></div>
+      <div class="row"><label for="accountHolder">Bank Account Holder Name <i>*</i></label><input id="accountHolder"></div>
+      <div class="row"><label for="ifsc">IFSC Code <i>*</i></label><input id="ifsc"></div>
+      <div class="row"><label for="income">Annual Family Income (Rs.) <i>*</i></label><input id="income" inputmode="numeric"></div>
+      <div class="row"><label for="ageProof">Age proof document available</label><input type="checkbox" id="ageProof"></div>
+      <div class="human">
+        <strong>Operator only:</strong> captcha, OTP and Submit are never filled by Bol Ke Bharo.
+        <div class="row"><label for="captcha">Enter captcha <span class="captcha">7K2QP</span></label><input id="captcha"></div>
+        <div class="row"><label for="otp">OTP sent to mobile</label><input id="otp" inputmode="numeric"></div>
+        <button id="submitBtn">Submit Application</button>
+      </div>
+    </form>
+    <p class="status" id="status"></p>
+  </div>
+</div>
+<script src="/web/fill.js"></script>
+<script>
+// Opened from Bol Ke Bharo with ?session=<id>: fetch the confirmed application and fill the form.
+(async () => {
+  const sid = new URLSearchParams(location.search).get("session");
+  if (!sid) return;
+  const status = document.getElementById("status");
+  const [res, map] = await Promise.all([fetch(`/api/sessions/${encodeURIComponent(sid)}/export`), fetch("/web/portal-map.json").then((r) => r.json())]);
+  if (!res.ok) { status.textContent = "This application has not been confirmed by the citizen yet."; status.style.color = "#c00"; return; }
+  const data = await res.json();
+  status.textContent = "Filling from the confirmed conversation…";
+  const filled = await bkbFill(data.portal_values, map, { onField: (k, el) => el.classList.add("filled") });
+  status.textContent = `${filled.length} fields filled. Operator: check, enter the captcha and OTP, then submit.`;
+  document.getElementById("captcha").focus();
+})();
+</script>
+</body>
+</html>

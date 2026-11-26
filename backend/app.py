@@ -78,6 +78,15 @@ def export(sid: str):
         raise HTTPException(409, str(e))
 
 
+@app.get("/api/latest-confirmed")
+def latest_confirmed():
+    """Used by the Chrome extension on the operator's own machine."""
+    try:
+        return store.latest_confirmed().export()
+    except KeyError:
+        raise HTTPException(404, "no confirmed application yet")
+
+
 @app.delete("/api/sessions/{sid}")
 def end(sid: str):
     store.delete(sid)

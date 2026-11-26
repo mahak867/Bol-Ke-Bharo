@@ -19,6 +19,12 @@ const ANSWERS = ["", "जी, मेरा नाम रामवती है",
   await p.goto('http://localhost:8000/');
   await p.waitForFunction(() => document.querySelector('#status').textContent.includes('confirmed'), null, { timeout: 30000 }).catch(() => {});
   console.log('status:', await p.textContent('#status'));
+  // Last mile: the practice portal fills itself from the confirmed application.
+  const [portal] = await Promise.all([p.context().waitForEvent('page'), p.click('#exportBtn')]);
+  await portal.waitForFunction(() => document.getElementById('status').textContent.includes('fields filled'), null, { timeout: 30000 });
+  console.log('portal:', await portal.textContent('#status'), '| name =', await portal.inputValue('#applicantName'),
+              '| captcha untouched =', (await portal.inputValue('#captcha')) === '');
+  if (process.argv[2]) await portal.screenshot({ path: process.argv[2], fullPage: true });
   console.log('heard:', (await p.evaluate(() => window.__heard)).length, 'errors:', errs);
   console.log('log:', (await p.$$eval('.log div', d => d.map(x => x.textContent))).slice(0, 4));
   await b.close();
