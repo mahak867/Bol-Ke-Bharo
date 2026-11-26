@@ -3,7 +3,7 @@ import time
 import uuid
 
 from . import guard, names
-from .lexicon import answer
+from .lexicon import answer, tokens
 from .privacy import mask_aadhaar, mask_for_display, mentions_secret
 from .schema import coerce, field_map
 
@@ -42,6 +42,17 @@ class Session:
         if mentions_secret(text):
             self.events.append({"t": time.time(), "type": "secret_warning"})
         self.transcript.append(f"{speaker.upper()}: {text}")
+        if (key := self._edit_command(text)) is not None:
+            # "गाँव बदलो" / "naam galat hai": clear that field and ask for it again.
+            self.values.pop(key, None)
+            self.meta.pop(key, None)
+            self.events.append({"t": time.time(), "type": "voice_edit", "key": key})
+            if self.phase != "collect":
+                self.phase, self.consent = "collect", None
+            self.expecting, self.open_failure, self.pending_confirm = key, None, None
+            self.say = "ठीक है, फिर से बताइए। " + self.fields[key]["ask"]["hi"]
+            self.transcript.append(f"ASSISTANT: {self.say}")
+            return
         if speaker == "citizen" and self._resolve_name_choice(text):
             self.say = self.next_prompt()
             self.transcript.append(f"ASSISTANT: {self.say}")
@@ -84,6 +95,20 @@ class Session:
             self.consent = None
         self.say = self.next_prompt()
         self.transcript.append(f"ASSISTANT: {self.say}")
+
+    def _edit_command(self, text: str) -> str | None:
+        """Field the speaker asked to change ("पति का नाम बदलो"), or None. The most specific alias
+        wins, so "पति का नाम" picks the husband's name rather than the applicant's name."""
+        low = text.lower()
+        if not set(tokens(low)) & set(self.schema.get("edit_words", [])):
+            return None
+        hits = [(max(len(a) for a in f["aliases"] if a in low), f["key"])
+                for f in self.schema["fields"] if any(a in low for a in f.get("aliases", []))]
+        if not hits:
+            return None
+        if len(hits) > 1:
+            hits = [h for h in hits if h[1] != "name"] or hits     # "नाम" alone is the least specific
+        return max(hits)[1]
 
     def _resolve_name_choice(self, text: str) -> bool:
         """After 'Aadhaar says X, passbook says Y', an answer that names one of them (in any script or

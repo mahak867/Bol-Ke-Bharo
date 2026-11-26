@@ -210,3 +210,23 @@ def test_export_has_portal_spelling():
     s.add_turn("citizen", "हाँ", Scripted([ups(consent="yes")]))
     out = s.export()["portal_values"]
     assert out["name"] == "Ramvati" and out["village"] == "फतेहपुर"   # only name fields are romanised
+
+
+def test_voice_edit_command_reasks_one_field():
+    s = _filled(bank_account_name="Ramvati")
+    assert s.phase == "readback"
+    s.add_turn("operator", "गाँव बदलो", Scripted([]))
+    assert "village" not in s.values and s.phase == "collect" and "गाँव" in s.say
+    s.add_turn("citizen", "x", Scripted([ups(village="Rampur")]))
+    assert s.values["village"] == "Rampur" and s.phase == "readback"
+
+
+def test_voice_edit_picks_most_specific_field():
+    s = _filled(bank_account_name="Ramvati")
+    s.add_turn("operator", "पति का नाम गलत है", Scripted([]))
+    assert "guardian_name" not in s.values and "name" in s.values
+
+
+def test_place_name_containing_edit_word_is_not_a_command():
+    s = SessionStore().create(load_schema("pension_up"))
+    assert s._edit_command("बदलापुर गाँव") is None

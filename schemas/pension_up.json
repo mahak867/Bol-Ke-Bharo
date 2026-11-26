@@ -20,7 +20,12 @@
       "readback": {
         "hi": "आपका नाम {value} है।"
       },
-      "portal_script": "latin"
+      "portal_script": "latin",
+      "aliases": [
+        "नाम",
+        "naam",
+        "name"
+      ]
     },
     {
       "key": "guardian_name",
@@ -36,7 +41,16 @@
       "readback": {
         "hi": "पिता या पति का नाम {value} है।"
       },
-      "portal_script": "latin"
+      "portal_script": "latin",
+      "aliases": [
+        "पति",
+        "पिता",
+        "पिताजी",
+        "pati",
+        "pita",
+        "father",
+        "husband"
+      ]
     },
     {
       "key": "age",
@@ -51,7 +65,13 @@
       },
       "readback": {
         "hi": "आपकी उम्र {value} साल है।"
-      }
+      },
+      "aliases": [
+        "उम्र",
+        "umar",
+        "umr",
+        "age"
+      ]
     },
     {
       "key": "gender",
@@ -71,7 +91,11 @@
       },
       "readback": {
         "hi": "लिंग: {value}।"
-      }
+      },
+      "aliases": [
+        "लिंग",
+        "gender"
+      ]
     },
     {
       "key": "district",
@@ -86,7 +110,15 @@
       },
       "readback": {
         "hi": "ज़िला {value} है।"
-      }
+      },
+      "aliases": [
+        "जिला",
+        "ज़िला",
+        "जिले",
+        "jila",
+        "zila",
+        "district"
+      ]
     },
     {
       "key": "village",
@@ -101,7 +133,14 @@
       },
       "readback": {
         "hi": "गाँव {value} है।"
-      }
+      },
+      "aliases": [
+        "गाँव",
+        "गांव",
+        "gaon",
+        "village",
+        "मोहल्ला"
+      ]
     },
     {
       "key": "mobile",
@@ -117,7 +156,13 @@
       },
       "readback": {
         "hi": "मोबाइल नंबर {value} है।"
-      }
+      },
+      "aliases": [
+        "मोबाइल",
+        "नंबर",
+        "mobile",
+        "number"
+      ]
     },
     {
       "key": "aadhaar_last4",
@@ -134,7 +179,12 @@
       },
       "readback": {
         "hi": "आधार के आख़िरी चार अंक {value} हैं।"
-      }
+      },
+      "aliases": [
+        "आधार",
+        "aadhaar",
+        "aadhar"
+      ]
     },
     {
       "key": "bank_account_name",
@@ -150,7 +200,13 @@
       "readback": {
         "hi": "पासबुक पर नाम {value} है।"
       },
-      "portal_script": "latin"
+      "portal_script": "latin",
+      "aliases": [
+        "पासबुक",
+        "बैंक",
+        "passbook",
+        "bank"
+      ]
     },
     {
       "key": "ifsc",
@@ -166,7 +222,11 @@
       },
       "readback": {
         "hi": "IFSC कोड {value} है।"
-      }
+      },
+      "aliases": [
+        "ifsc",
+        "आईएफएससी"
+      ]
     },
     {
       "key": "annual_income",
@@ -181,7 +241,14 @@
       },
       "readback": {
         "hi": "सालाना आय {value} रुपये है।"
-      }
+      },
+      "aliases": [
+        "आय",
+        "कमाई",
+        "income",
+        "aamdani",
+        "आमदनी"
+      ]
     },
     {
       "key": "has_age_proof",
@@ -196,7 +263,11 @@
       },
       "readback": {
         "hi": "उम्र का प्रमाण: {value}।"
-      }
+      },
+      "aliases": [
+        "प्रमाण",
+        "proof"
+      ]
     }
   ],
   "rules": [
@@ -256,5 +327,17 @@
   },
   "not_heard": {
     "hi": "माफ़ कीजिए, ठीक से सुनाई नहीं दिया।"
-  }
+  },
+  "edit_words": [
+    "बदलो",
+    "बदलिए",
+    "बदलना",
+    "badlo",
+    "badliye",
+    "गलत",
+    "ग़लत",
+    "galat",
+    "change",
+    "सुधारो"
+  ]
 }
