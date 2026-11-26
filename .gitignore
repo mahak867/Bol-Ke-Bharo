@@ -3,3 +3,4 @@ __pycache__/
 .venv/
 .env
 eval/samples/
+research_notes/

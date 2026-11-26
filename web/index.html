@@ -40,6 +40,15 @@ button { font: inherit; border-radius: 10px; border: 1px solid var(--line); padd
 .typed select, .typed input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--bg); color: var(--ink); min-width: 0; }
 .typed input { flex: 1; }
+.hfrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; flex-wrap: wrap; }
+.listening { color: var(--warn); font-weight: 600; animation: pulse 1s infinite; }
+.chips { font-size: 13px; color: var(--muted); margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chips span { border: 1px solid var(--line); border-radius: 99px; padding: 2px 8px; }
+.events { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.event { border-radius: 8px; padding: 6px 10px; font-size: 14px; font-weight: 600; animation: pop .4s ease-out; }
+.event.bad { background: var(--warn-bg); color: var(--warn); }
+.event.good { background: var(--ok); color: var(--accent); }
+@keyframes pop { from { transform: scale(.96); opacity: 0; } }
 .interim { color: var(--muted); min-height: 1.5em; margin-top: 8px; font-style: italic; }
 .log { margin-top: 12px; max-height: 260px; overflow: auto; font-size: 14px; }
 .log div { padding: 4px 0; border-bottom: 1px dashed var(--line); }
@@ -76,6 +85,9 @@ pre { background: var(--bg); padding: 10px; border-radius: 8px; overflow: auto; 
       <button class="mic op" id="micOp">🎙 Operator bol rahe hain</button>
       <button class="mic cit" id="micCit">🎙 Citizen bol rahi hain</button>
     </div>
+    <div class="hfrow"><label><input type="checkbox" id="hf" checked> Hands-free: listens after every question</label>
+      <span class="listening" id="listening" hidden></span></div>
+    <div class="chips">बोलकर चलाएँ: <span>“दोबारा” = repeat</span><span>“रुको” = pause</span><span>“नहीं, …” = correct</span></div>
     <div class="interim" id="interim"></div>
     <form class="typed" id="typed">
       <select id="who"><option value="citizen">Citizen</option><option value="operator">Operator</option></select>
@@ -88,6 +100,7 @@ pre { background: var(--bg); padding: 10px; border-radius: 8px; overflow: auto; 
   <section>
     <h2>Application</h2>
     <div class="status" id="status"></div>
+    <div class="events" id="events"></div>
     <div id="warnings"></div>
     <table id="form"></table>
     <div class="actions">
@@ -108,21 +121,51 @@ async function api(path, opts = {}) {
   return r.json();
 }
 
-function speak(text) {
-  if (!("speechSynthesis" in window) || !text) return;
-  speechSynthesis.cancel();
+let handsFree = true, noInput = 0, ttsTimer = null;
+function speak(text, then) {
+  stopListening();
+  if (!("speechSynthesis" in window) || !text) { then && then(); return; }
+  speechSynthesis.cancel(); clearTimeout(ttsTimer);
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "hi-IN"; u.rate = 0.9;
+  u.lang = "hi-IN"; u.rate = 0.85;
   const v = speechSynthesis.getVoices().find((v) => v.lang.startsWith("hi"));
   if (v) u.voice = v;
+  let done = false;
+  const finish = () => { if (done) return; done = true; clearTimeout(ttsTimer); setTimeout(() => then && then(), 250); };
+  u.onend = finish;
+  // Some Chrome builds drop onend for long utterances: fall back to a length-based timer.
+  ttsTimer = setTimeout(finish, 1500 + text.length * 110);
   speechSynthesis.speak(u);
+}
+function afterSpeaking() {
+  if (handsFree && state && state.phase !== "done") listen("citizen", true);
+}
+
+let events = [];
+function addEvent(kind, text) {
+  events.unshift({ kind, text, t: new Date().toLocaleTimeString() });
+  events = events.slice(0, 4);
+  $("events").innerHTML = events.map((e) => `<div class="event ${e.kind}">${esc(e.text)} <small>· ${e.t}</small></div>`).join("");
+}
+function diffEvents(prev, s) {
+  const ids = (x) => new Set((x ? x.warnings : []).map((w) => w.id));
+  const before = ids(prev), after = ids(s);
+  const LABEL = { name_match: "Name mismatch detected · नाम मेल नहीं खाता", min_age: "Age below 60 · उम्र 60 से कम",
+                  age_proof: "Age proof missing · उम्र का प्रमाण नहीं" };
+  for (const id of after) if (!before.has(id)) addEvent("bad", "⚠ " + (LABEL[id] || id));
+  for (const id of before) if (!after.has(id)) addEvent("good", "✓ Fixed by voice · ठीक हो गया: " + (LABEL[id] || id).split(" · ")[0]);
+  if (prev && s.transcript.some((l) => l.includes("XXXX XXXX")) && !prev.transcript.some((l) => l.includes("XXXX XXXX")))
+    addEvent("good", "🔒 Full Aadhaar masked · सिर्फ़ आख़िरी 4 अंक रखे");
+  if (prev && prev.phase !== "readback" && s.phase === "readback") addEvent("good", "🔊 Read-back started · पढ़कर सुना रहे हैं");
+  if (prev && prev.phase !== "done" && s.phase === "done") addEvent("good", "✓ Consent captured by voice · “हाँ” दर्ज");
 }
 
 function render(s) {
+  diffEvents(state, s);
   const prevSay = state && state.say;
   state = s;
   $("say").textContent = s.say;
-  if (s.say !== prevSay) speak(s.say);
+  if (s.say !== prevSay) { noInput = 0; speak(s.say, afterSpeaking); }
   $("status").innerHTML =
     `<span class="pill">${s.fields.filter((f) => f.value !== null).length}/${s.fields.length} filled</span>` +
     `<span class="pill ${s.phase === "done" ? "done" : ""}">${{ collect: "Collecting", readback: "Waiting for haan", done: "Citizen confirmed ✓" }[s.phase]}</span>`;
@@ -150,7 +193,7 @@ async function newSession() {
   const s = await api("/api/sessions", { method: "POST", body: JSON.stringify({ form_id: "pension_up" }) });
   $("formTitle").textContent = "वृद्धावस्था पेंशन";
   $("exportOut").hidden = true;
-  state = null; render(s);
+  state = null; events = []; $("events").innerHTML = ""; render(s);
   timerStart = Date.now(); clearInterval(timerHandle);
   timerHandle = setInterval(() => {
     if (state && state.phase === "done") return;
@@ -168,35 +211,74 @@ async function sendTurn(speaker, text) {
 }
 
 // ---- Speech recognition (browser, Hindi + Hinglish) ----
+// Hands-free: after the app finishes speaking it listens for the citizen; the recogniser's own
+// end-of-speech detection ends the turn. Tap "Operator" to give the operator the next turn.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, liveSpeaker = null;
 if (!SR) $("micNote").textContent = "This browser has no speech recognition. Use Chrome, or type below.";
-function toggleMic(speaker) {
-  if (!SR) return;
-  if (rec) { const was = liveSpeaker; rec.stop(); if (was === speaker) return; }
-  speechSynthesis.cancel();
+const REPEAT = /^(दोबारा|दुबारा|फिर से|फिरसे|क्या कहा|dobara|phir se|repeat)/i;
+const PAUSE = /^(रुको|रुकिए|ruko|stop|बस)/i;
+
+function stopListening() {
+  if (rec) { const r = rec; rec = null; r.onend = null; try { r.abort(); } catch (e) {} }
+  liveSpeaker = null;
+  $("micOp").classList.remove("live"); $("micCit").classList.remove("live");
+  $("listening").hidden = true;
+}
+
+function listen(speaker, auto) {
+  if (!SR || !state) return;
+  stopListening();
   rec = new SR(); liveSpeaker = speaker;
-  rec.lang = "hi-IN"; rec.interimResults = true; rec.continuous = true;
+  rec.lang = "hi-IN"; rec.interimResults = true; rec.continuous = false;
   const btn = speaker === "operator" ? $("micOp") : $("micCit");
   btn.classList.add("live");
+  $("listening").hidden = false;
+  $("listening").textContent = speaker === "operator" ? "🎙 सुन रहे हैं: ऑपरेटर…" : "🎙 सुन रहे हैं: नागरिक…";
+  let heard = false;
+  const me = rec;
   rec.onresult = (e) => {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const r = e.results[i];
-      if (r.isFinal) sendTurn(speaker, r[0].transcript); else interim += r[0].transcript;
+      if (r.isFinal) { heard = true; handleSpeech(speaker, r[0].transcript.trim()); }
+      else interim += r[0].transcript;
     }
     $("interim").textContent = interim;
   };
-  rec.onend = () => { btn.classList.remove("live"); rec = null; liveSpeaker = null; };
-  rec.onerror = (e) => { $("micNote").textContent = "Mic error: " + e.error; };
-  rec.start();
+  rec.onerror = (e) => {
+    if (e.error === "not-allowed") { handsFree = false; $("hf").checked = false;
+      $("micNote").textContent = "Microphone blocked. Allow it in the address bar, then tap a mic button."; }
+  };
+  rec.onend = () => {
+    if (rec !== me) return;           // a newer recogniser took over
+    stopListening();
+    if (heard || !auto || !handsFree) return;
+    // No input: retry quietly once, then re-ask once, then pause and wait for a tap.
+    noInput += 1;
+    if (noInput === 1) listen("citizen", true);
+    else if (noInput === 2) speak("क्या आप मुझे सुन पा रहे हैं? " + state.say, afterSpeaking);
+    else $("micNote").textContent = "रुका हुआ। Paused: tap Citizen to continue.";
+  };
+  try { rec.start(); } catch (e) {}
 }
-$("micOp").onclick = () => toggleMic("operator");
-$("micCit").onclick = () => toggleMic("citizen");
+
+function handleSpeech(speaker, text) {
+  if (!text) return;
+  if (REPEAT.test(text)) { speak(state.say, afterSpeaking); return; }
+  if (PAUSE.test(text)) { handsFree = false; $("hf").checked = false; stopListening();
+    $("micNote").textContent = "Hands-free paused. Tap a mic button to continue."; return; }
+  $("micNote").textContent = "";
+  sendTurn(speaker, text);
+}
+
+$("micOp").onclick = () => { speechSynthesis.cancel(); liveSpeaker === "operator" ? stopListening() : listen("operator", false); };
+$("micCit").onclick = () => { speechSynthesis.cancel(); noInput = 0; liveSpeaker === "citizen" ? stopListening() : listen("citizen", true); };
+$("hf").onchange = (e) => { handsFree = e.target.checked; if (!handsFree) stopListening(); else afterSpeaking(); };
 
 $("typed").onsubmit = (e) => { e.preventDefault(); sendTurn($("who").value, $("text").value); $("text").value = ""; };
 $("newBtn").onclick = newSession;
-$("speakBtn").onclick = () => state && speak(state.say);
+$("speakBtn").onclick = () => state && speak(state.say, afterSpeaking);
 $("form").onclick = async (e) => {
   const td = e.target.closest("td.val"); if (!td) return;
   const v = prompt("Correct value for " + td.dataset.key, ""); if (v === null) return;

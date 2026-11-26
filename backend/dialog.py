@@ -135,6 +135,15 @@ class Session:
             return GENDER_HI.get(v, v)
         return mask_for_display(self.fields[key], v)
 
+    def spoken(self, key) -> str:
+        """How a value is read aloud: IDs and numbers digit by digit, in groups, so they can be checked."""
+        v = self.values[key]
+        if key == "mobile":
+            return " ".join(v[:5]) + ", " + " ".join(v[5:])
+        if key in ("aadhaar_last4", "ifsc"):
+            return " ".join(str(v))
+        return self.display(key)
+
     def missing(self) -> list[str]:
         return [f["key"] for f in self.schema["fields"] if f.get("required") and f["key"] not in self.values]
 
@@ -163,11 +172,11 @@ class Session:
         for key in self.values:
             if self.meta[key]["confidence"] < LOW_CONFIDENCE:
                 self.pending_confirm = key
-                return f"मैंने सुना: {self.display(key)}। क्या यह सही है?"
+                return f"मैंने सुना: {self.spoken(key)}। क्या यह सही है?"
 
         # 4. Everything filled: read back for consent.
         self.phase = "readback"
-        lines = [self.fields[f["key"]]["readback"]["hi"].format(value=self.display(f["key"]))
+        lines = [self.fields[f["key"]]["readback"]["hi"].format(value=self.spoken(f["key"]))
                  for f in self.schema["fields"] if f["key"] in self.values]
         return " ".join([self.schema["done"]["hi"], *lines, self.schema["confirm"]["hi"]])
 

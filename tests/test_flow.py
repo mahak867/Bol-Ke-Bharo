@@ -45,7 +45,7 @@ def test_name_mismatch_is_caught_then_fixed_then_consent():
 
     s.add_turn("citizen", "Ramvati sahi hai", ex)
     assert s.phase == "readback" and "हाँ या ना" in s.say
-    assert "XXXX XXXX 9012" in s.say                      # Aadhaar masked in read-back
+    assert "9 0 1 2" in s.say and "1234" not in s.say      # only last 4, read digit by digit
 
     s.add_turn("citizen", "haan", ex)
     assert s.phase == "done"

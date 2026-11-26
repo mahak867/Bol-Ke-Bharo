@@ -7,14 +7,35 @@ rejection guard catches mistakes, and everything is read back to the citizen for
 > Independent assistant, not a government service. Audio is never stored, Aadhaar is masked to
 > the last 4 digits, OTPs are never handled, and a person always does the final submit.
 
-## Status: L1 + L2 core (engine, guard, read-back, consent)
+![Name mismatch caught by voice](demo/screenshot.png)
+
+**Demo video:** [`demo/bol-ke-bharo-demo.mp4`](demo/bol-ke-bharo-demo.mp4) (automated walkthrough, captions in Hindi and English).
+
+## Why it scores where it matters
+
+| Criterion | What Bol Ke Bharo does |
+|---|---|
+| **Voice-first experience** | Hands-free: after every spoken question it listens automatically. Silence gets a quiet retry, then a re-ask, then a pause. Voice commands: “दोबारा” (repeat), “रुको” (pause). Numbers are read back digit by digit. Nobody types. |
+| **India relevance** | Built for the ~5.67 lakh Common Service Centres (MeitY, Oct 2025) where operators fill pension forms for citizens who can't. Works in Devanagari Hindi and Hinglish, understands “तीस हजार” and “अड़सठ साल”, masks Aadhaar. |
+| **Working product** | Full pension application by voice, end to end, tested: 11 unit tests plus a browser test that completes a whole application with zero taps. Runs with no API key (offline extractor) or with Claude for free-form conversation. |
+| **Originality** | Not a chatbot that answers questions: it listens to a **two-person** conversation, fills a real form, and **catches rejection causes** (Aadhaar vs passbook name mismatch) at the counter, then gets spoken consent before export. |
+
+## Status
 
 | Layer | State |
 |---|---|
-| L1 Conversation → form | ✅ Claude extractor (structured output) + offline rule fallback |
-| L2 Rejection guard + read-back + "हाँ" consent | ✅ name mismatch, minimum age, missing documents |
-| Speech | Browser Web Speech API (`hi-IN`) for both listening and speaking — no key needed. Sarvam is next. |
-| L3 Portal autofill extension | ⏳ not started; `/export` already gives the final JSON |
+| L1 Conversation → form | ✅ Claude extractor (structured output) + offline slot-filling extractor for Hindi/Hinglish |
+| L2 Rejection guard + read-back + "हाँ" consent | ✅ name mismatch (resolved by voice), minimum age, age proof |
+| Voice loop | ✅ Hands-free turn-taking, no-input retry ladder, voice commands, on-screen event labels |
+| Speech | Browser Web Speech API (`hi-IN`) for listening and speaking. Sarvam / Bhashini are the next step. |
+| L3 Portal autofill extension | ⏳ `/export` already gives the final JSON |
+
+## Known limitations
+
+- Chrome's speech recognition sends audio to Google to transcribe it. Bol Ke Bharo itself stores no audio.
+- The offline extractor answers one question at a time; free-form, multi-field speech needs the Claude extractor.
+- The pension form fields and rules are a demo and must be checked against the real portal.
+- No barge-in: the app does not listen while it is speaking, to avoid hearing itself on laptop speakers.
 
 ## Run
 
@@ -28,7 +49,9 @@ Open http://localhost:8000 in **Chrome** (it has Hindi speech recognition). Tap 
 **Citizen** before each person speaks, or type into the box.
 
 ```bash
-python -m pytest -q
+python -m pytest -q                      # unit tests
+node tests/e2e/handsfree.js              # browser test: full application, zero taps (server must be running)
+node demo/make_video.js demo/            # re-record the demo video
 ```
 
 Settings: `BKB_MODEL` (default `claude-sonnet-5-5`), `BKB_EXTRACTOR=rules` to force offline mode.
