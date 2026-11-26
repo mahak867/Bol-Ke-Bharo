@@ -2,11 +2,12 @@
 import time
 import uuid
 
-from . import guard
+from . import guard, names
 from .privacy import mask_aadhaar, mask_for_display, mentions_secret
 from .schema import coerce, field_map
 
 LOW_CONFIDENCE = 0.7
+_YES_WORDS = {"हाँ", "हां", "जी", "haan", "han", "ji", "yes", "सही"}
 SESSION_TTL_SECONDS = 30 * 60
 
 BOOL_HI = {True: "हाँ", False: "नहीं"}
@@ -85,20 +86,26 @@ class Session:
         self.transcript.append(f"ASSISTANT: {self.say}")
 
     def _resolve_name_choice(self, text: str) -> bool:
-        """After 'Aadhaar says X, passbook says Y - which is right?', an answer naming X or Y sets both."""
+        """After 'Aadhaar says X, passbook says Y', an answer that names one of them (in any script or
+        spacing), or a plain yes to 'is the Aadhaar name right?', sets both fields to that spelling."""
         f = self.open_failure
         if not f or f["id"] != "name_match":
             return False
         a, b = f["fields"]
-        said = " ".join(text.lower().split())
-        candidates = sorted({self.values.get(a), self.values.get(b)} - {None}, key=len, reverse=True)
-        for name in candidates:
-            if " ".join(str(name).lower().split()) in said:
-                for k in (a, b):
-                    self.set_field(k, name, 1.0, text, source="voice")
-                self.open_failure = None
-                return True
-        return False
+        chosen = None
+        if names.mentions(text, self.values[a]):
+            chosen = self.values[a]          # Aadhaar is the reference when both sound the same
+        elif names.mentions(text, self.values[b]):
+            chosen = self.values[b]
+        elif f.get("verdict") == "spelling" and text.split() and text.split()[0].strip("।,.!") in _YES_WORDS:
+            chosen = self.values[a]
+        if chosen is None:
+            return False
+        for k in (a, b):
+            self.set_field(k, chosen, 1.0, text, source="voice")
+        self.events.append({"t": time.time(), "type": "name_resolved", "value": chosen})
+        self.open_failure = None
+        return True
 
     def set_field(self, key, raw, confidence=1.0, evidence="", source="operator") -> bool:
         field = self.fields.get(key)
@@ -134,6 +141,13 @@ class Session:
         if key == "gender":
             return GENDER_HI.get(v, v)
         return mask_for_display(self.fields[key], v)
+
+    def latin(self, key):
+        """Portal spelling of a Hindi-script text value (रामवती -> Ramvati), else None."""
+        v = self.values.get(key)
+        if self.fields[key]["type"] == "string" and isinstance(v, str) and any("\u0900" <= c <= "\u097f" for c in v):
+            return names.to_latin(v)
+        return None
 
     def spoken(self, key) -> str:
         """How a value is read aloud: IDs and numbers digit by digit, in groups, so they can be checked."""
@@ -190,6 +204,7 @@ class Session:
             "fields": [
                 {"key": f["key"], "label": f["label"], "required": f.get("required", False),
                  "value": self.display(f["key"]) if f["key"] in self.values else None,
+                 "latin": self.latin(f["key"]),
                  **({k: self.meta[f["key"]][k] for k in ("confidence", "evidence", "corrected", "source")}
                     if f["key"] in self.meta else {})}
                 for f in self.schema["fields"]
@@ -205,7 +220,8 @@ class Session:
         """Final payload for the portal-fill extension. Only after spoken consent."""
         if not (self.consent and self.consent["answer"] == "yes"):
             raise PermissionError("citizen has not confirmed the read-back")
-        return {"form_id": self.schema["form_id"], "values": self.values,
+        portal = {k: (self.latin(k) or v) for k, v in self.values.items()}
+        return {"form_id": self.schema["form_id"], "values": self.values, "portal_values": portal,
                 "consent_at": self.consent["at"], "warnings": guard.check(self.schema, self.values)}
 
 

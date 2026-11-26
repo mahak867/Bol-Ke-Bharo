@@ -4,111 +4,166 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bol Ke Bharo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
+/* Tokens: a CSC counter. Form paper, fountain-pen ink, a rubber stamp, haldi for "listening",
+   sindoor for rejection risk, leaf green for consent. */
 :root {
-  --bg: #f7f5f0; --panel: #ffffff; --ink: #1d1b16; --muted: #6b665c; --line: #e4dfd4;
-  --accent: #1f6f5c; --accent-ink: #ffffff; --warn: #9a3412; --warn-bg: #fff1e6;
-  --low: #fff7d6; --ok: #e7f4ee; --op: #34497a; --cit: #1f6f5c;
+  --paper: #eef1ec; --sheet: #ffffff; --ink: #1c2533; --ink-2: #4d5868; --rule: #d6dcd3;
+  --stamp: #2d4b9a; --stamp-ink: #ffffff; --haldi: #d99a1e; --haldi-wash: #fbf0d6;
+  --sindoor: #a8321f; --sindoor-wash: #f8e3dd; --leaf: #2f7a4d; --leaf-wash: #e0f0e5;
+  --focus: #2d4b9a;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #15140f; --panel: #1f1d17; --ink: #f1ede4; --muted: #a39d90; --line: #33302a;
-    --accent: #5fbfa3; --accent-ink: #0d1f1a; --warn: #fdba74; --warn-bg: #3a2414;
-    --low: #3a3418; --ok: #17322a; --op: #9fb3e6; --cit: #5fbfa3; }
+  :root { --paper: #141a22; --sheet: #1c2430; --ink: #eef1ec; --ink-2: #a9b3c1; --rule: #2f3a49;
+    --stamp: #8ea6ec; --stamp-ink: #101826; --haldi: #f0b84a; --haldi-wash: #3a2f15;
+    --sindoor: #f19a86; --sindoor-wash: #3b211c; --leaf: #7fcf9d; --leaf-wash: #18352a; --focus: #8ea6ec; }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink);
-  font: 16px/1.5 system-ui, "Noto Sans Devanagari", sans-serif; }
-header { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
-h1 { font-size: 18px; margin: 0; }
-.timer { font-variant-numeric: tabular-nums; font-weight: 600; }
-.timer small { color: var(--muted); font-weight: 400; }
-main { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; padding: 16px; max-width: 1200px; margin: 0 auto; }
-@media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
-h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 12px; }
-.say { font-size: 20px; padding: 14px; border-radius: 10px; background: var(--ok); margin-bottom: 14px; }
-.mics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-button { font: inherit; border-radius: 10px; border: 1px solid var(--line); padding: 12px; cursor: pointer;
-  background: var(--panel); color: var(--ink); }
-.mic { font-size: 17px; font-weight: 600; padding: 18px 10px; color: #fff; border: 0; }
-.mic.op { background: var(--op); } .mic.cit { background: var(--cit); }
-@media (prefers-color-scheme: dark) { .mic { color: #111; } }
-.mic.live { outline: 4px solid var(--warn); animation: pulse 1s infinite; }
-@keyframes pulse { 50% { opacity: .75; } }
-.typed { display: flex; gap: 8px; margin-top: 12px; }
-.typed select, .typed input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
-  background: var(--bg); color: var(--ink); min-width: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 17px/1.5 "Mukta", "Noto Sans Devanagari", system-ui, sans-serif; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--sheet); padding: 10px 16px; font-weight: 500; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Header: product, the form being filled, the clock that proves speed. */
+header { display: flex; align-items: baseline; gap: 18px; padding: 14px 24px; border-bottom: 1.5px solid var(--rule); flex-wrap: wrap; }
+.brand { font-weight: 800; font-size: 22px; letter-spacing: -.01em; }
+.brand small { font-weight: 500; color: var(--ink-2); font-size: 17px; margin-left: 6px; }
+.formname { color: var(--ink-2); }
+.clock { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 22px; }
+.clock small { display: block; font-weight: 400; font-size: 13px; color: var(--ink-2); text-align: right; }
+
+main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 28px; padding: 24px; max-width: 1320px; margin: 0 auto; }
+@media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 20px; } header { padding: 12px 16px; } }
+
+/* Stage: the one bold element. Orb + the question being asked right now. */
+.stage { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center; padding: 8px 0 22px; border-bottom: 1.5px solid var(--rule); }
+.orb { width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; position: relative;
+  border: 3px solid var(--ink-2); color: var(--ink-2); transition: background .25s, border-color .25s, color .25s; }
+.orb svg { width: 40px; height: 40px; }
+.orb::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 3px solid transparent; }
+body[data-mode="speaking"] .orb { background: var(--stamp); border-color: var(--stamp); color: var(--stamp-ink); }
+body[data-mode="listening"] .orb { background: var(--haldi); border-color: var(--haldi); color: #1c2533; }
+body[data-mode="listening"] .orb::after { border-color: var(--haldi); animation: ring 1.2s ease-out infinite; }
+body[data-mode="done"] .orb { background: var(--leaf); border-color: var(--leaf); color: #fff; }
+@keyframes ring { from { transform: scale(.9); opacity: 1; } to { transform: scale(1.25); opacity: 0; } }
+.mode { font-weight: 700; font-size: 15px; color: var(--ink-2); margin-bottom: 4px; }
+body[data-mode="listening"] .mode { color: var(--haldi); }
+body[data-mode="speaking"] .mode { color: var(--stamp); }
+body[data-mode="done"] .mode { color: var(--leaf); }
+.say { font-size: 27px; line-height: 1.35; font-weight: 500; max-width: 30ch; }
+@media (max-width: 600px) { .stage { grid-template-columns: 1fr; } .orb { width: 80px; height: 80px; } .say { font-size: 23px; } }
+
+.controls { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.mic { flex: 1 1 200px; padding: 14px 16px; font-weight: 700; text-align: left; border-width: 2px; }
+.mic span { display: block; font-weight: 400; font-size: 14px; color: var(--ink-2); }
+.mic.op { border-color: var(--stamp); } .mic.cit { border-color: var(--ink); }
+.mic.live { background: var(--haldi-wash); border-color: var(--haldi); }
+.hf { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 15px; }
+.hf input { width: 18px; height: 18px; accent-color: var(--stamp); }
+.chips { margin-top: 6px; font-size: 14px; color: var(--ink-2); }
+.chips b { color: var(--ink); font-weight: 700; }
+.listening { display: none; }
+.interim { min-height: 1.5em; margin-top: 10px; color: var(--ink-2); font-style: italic; }
+.typed { display: flex; gap: 8px; margin-top: 8px; }
+.typed select, .typed input { padding: 10px; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--sheet); min-width: 0; }
 .typed input { flex: 1; }
-.hfrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; flex-wrap: wrap; }
-.listening { color: var(--warn); font-weight: 600; animation: pulse 1s infinite; }
-.chips { font-size: 13px; color: var(--muted); margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.chips span { border: 1px solid var(--line); border-radius: 99px; padding: 2px 8px; }
-.events { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.event { border-radius: 8px; padding: 6px 10px; font-size: 14px; font-weight: 600; animation: pop .4s ease-out; }
-.event.bad { background: var(--warn-bg); color: var(--warn); }
-.event.good { background: var(--ok); color: var(--accent); }
-@keyframes pop { from { transform: scale(.96); opacity: 0; } }
-.interim { color: var(--muted); min-height: 1.5em; margin-top: 8px; font-style: italic; }
-.log { margin-top: 12px; max-height: 260px; overflow: auto; font-size: 14px; }
-.log div { padding: 4px 0; border-bottom: 1px dashed var(--line); }
-.log .OPERATOR b { color: var(--op); } .log .CITIZEN b { color: var(--cit); } .log .ASSISTANT { color: var(--muted); }
-table { width: 100%; border-collapse: collapse; font-size: 15px; }
-td { padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-td.label { color: var(--muted); width: 42%; }
-td.val { font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
-tr.low td.val { background: var(--low); }
-tr.empty td.val { color: var(--muted); font-weight: 400; }
-.conf { font-size: 12px; color: var(--muted); font-weight: 400; display: block; }
-.warn { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
-.status { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.pill { font-size: 13px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); }
-.pill.done { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-.primary { background: var(--accent); color: var(--accent-ink); border: 0; font-weight: 600; }
-button:disabled { opacity: .45; cursor: not-allowed; }
-pre { background: var(--bg); padding: 10px; border-radius: 8px; overflow: auto; font-size: 13px; }
-.note { font-size: 13px; color: var(--muted); }
+.note { font-size: 14px; color: var(--ink-2); min-height: 1.2em; }
+
+/* Dialogue: two voices and the app, newest first. */
+.log { margin-top: 10px; font-size: 16px; max-height: 340px; overflow: auto; }
+.log div { display: grid; grid-template-columns: 76px 1fr; gap: 10px; padding: 7px 0; border-top: 1px solid var(--rule); }
+.log b { font-weight: 700; font-size: 14px; padding-top: 1px; }
+.log .OPERATOR b { color: var(--stamp); } .log .CITIZEN b { color: var(--ink); }
+.log .ASSISTANT { color: var(--ink-2); } .log .ASSISTANT b { color: var(--ink-2); font-weight: 500; }
+
+/* The form sheet: printed, ruled, numbered like the paper form it replaces. */
+.sheet { background: var(--sheet); border: 1.5px solid var(--rule); border-radius: 14px; padding: 22px 24px; }
+.sheet h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.sheet .sub { color: var(--ink-2); font-size: 15px; margin: 2px 0 14px; }
+.progress { height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--stamp); transition: width .4s; }
+body[data-mode="done"] .progress i { background: var(--leaf); }
+.status { display: flex; justify-content: space-between; font-size: 15px; color: var(--ink-2); margin: 6px 0 14px; }
+.status strong { color: var(--ink); }
+.status .ok { color: var(--leaf); font-weight: 700; }
+.events { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.event { padding: 4px 0 4px 12px; border-left: 4px solid var(--leaf); font-size: 15px; font-weight: 500; }
+.event.bad { border-color: var(--sindoor); color: var(--sindoor); }
+.event time { color: var(--ink-2); font-weight: 400; font-size: 13px; margin-left: 6px; }
+.warn { background: var(--sindoor-wash); color: var(--sindoor); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-weight: 500; font-size: 17px; }
+.warn small { display: block; font-weight: 400; font-size: 14px; color: var(--ink-2); margin-top: 4px; }
+table { width: 100%; border-collapse: collapse; }
+td { padding: 9px 4px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.n { width: 28px; color: var(--ink-2); font-size: 14px; padding-top: 12px; font-variant-numeric: tabular-nums; }
+td.label { width: 38%; font-size: 16px; }
+td.label small { display: block; color: var(--ink-2); font-size: 13px; }
+td.val { font-size: 19px; font-weight: 700; cursor: pointer; overflow-wrap: anywhere; }
+td.val:hover { background: var(--paper); }
+td.val .latin { display: block; font-size: 14px; font-weight: 500; color: var(--stamp); }
+td.val .meta { display: block; font-size: 13px; font-weight: 400; color: var(--ink-2); }
+tr.empty td.val { color: var(--rule); font-weight: 400; }
+tr.low td.val { box-shadow: inset 0 -3px 0 var(--haldi); }
+tr.flag td.val { color: var(--sindoor); }
+tr.fresh td.val { animation: ink 1.2s ease-out; }
+@keyframes ink { from { background: var(--haldi-wash); } to { background: transparent; } }
+.actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.primary { background: var(--stamp); border-color: var(--stamp); color: var(--stamp-ink); font-weight: 700; }
+pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: auto; font-size: 13px; max-height: 280px; }
+.fine { font-size: 13px; color: var(--ink-2); margin-top: 14px; }
+@media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
-<body>
+<body data-mode="idle">
 <header>
-  <h1>Bol Ke Bharo · <span id="formTitle">…</span></h1>
-  <div class="timer"><span id="timer">0:00</span> <small id="engine"></small></div>
+  <div class="brand">Bol Ke Bharo <small>बोल के भरो</small></div>
+  <div class="formname" id="formTitle">वृद्धावस्था पेंशन आवेदन</div>
+  <div class="clock"><span id="timer">0:00</span><small id="engine"></small></div>
   <button id="newBtn">New application</button>
 </header>
 <main>
-  <section>
-    <h2>Conversation</h2>
-    <div class="say" id="say">…</div>
-    <div class="mics">
-      <button class="mic op" id="micOp">🎙 Operator bol rahe hain</button>
-      <button class="mic cit" id="micCit">🎙 Citizen bol rahi hain</button>
+  <section aria-label="Conversation">
+    <div class="stage">
+      <div class="orb" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+      <div>
+        <div class="mode" id="mode" aria-live="polite">तैयार</div>
+        <div class="say" id="say" aria-live="polite">…</div>
+      </div>
     </div>
-    <div class="hfrow"><label><input type="checkbox" id="hf" checked> Hands-free: listens after every question</label>
-      <span class="listening" id="listening" hidden></span></div>
-    <div class="chips">बोलकर चलाएँ: <span>“दोबारा” = repeat</span><span>“रुको” = pause</span><span>“नहीं, …” = correct</span></div>
+    <div class="controls">
+      <button class="mic cit" id="micCit">नागरिक बोल रही हैं<span>Citizen speaks</span></button>
+      <button class="mic op" id="micOp">ऑपरेटर बोल रहे हैं<span>Operator speaks</span></button>
+    </div>
+    <label class="hf"><input type="checkbox" id="hf" checked> Hands-free: listens by itself after every question</label>
+    <div class="chips">Say <b>“दोबारा”</b> to hear it again, <b>“रुको”</b> to pause, or <b>“नहीं, …”</b> to correct.</div>
+    <span class="listening" id="listening" hidden></span>
     <div class="interim" id="interim"></div>
     <form class="typed" id="typed">
-      <select id="who"><option value="citizen">Citizen</option><option value="operator">Operator</option></select>
-      <input id="text" placeholder="Or type what was said…" autocomplete="off">
-      <button>Send</button>
+      <select id="who" aria-label="Speaker"><option value="citizen">Citizen</option><option value="operator">Operator</option></select>
+      <input id="text" placeholder="Type what was said, if the mic can't hear" autocomplete="off" aria-label="Typed answer">
+      <button>Add</button>
     </form>
     <p class="note" id="micNote"></p>
-    <div class="log" id="log"></div>
+    <div class="log" id="log" aria-label="Conversation so far"></div>
   </section>
-  <section>
-    <h2>Application</h2>
+  <section class="sheet" aria-label="Application">
+    <h2>आवेदन पत्र</h2>
+    <div class="sub">Old-age pension application, filled from the conversation</div>
+    <div class="progress"><i id="bar" style="width:0"></i></div>
     <div class="status" id="status"></div>
-    <div class="events" id="events"></div>
-    <div id="warnings"></div>
+    <div class="events" id="events" aria-live="polite"></div>
+    <div id="warnings" aria-live="assertive"></div>
     <table id="form"></table>
     <div class="actions">
-      <button id="speakBtn">🔊 Repeat</button>
-      <button class="primary" id="exportBtn" disabled>Export for portal</button>
+      <button id="speakBtn">Read the question again</button>
+      <button class="primary" id="exportBtn" disabled>Send to portal</button>
     </div>
     <pre id="exportOut" hidden></pre>
-    <p class="note">Independent assistant — not a government service. Audio is not stored. Aadhaar is masked to the last 4 digits. A person always does the captcha, OTP and final submit.</p>
+    <p class="fine">Independent assistant, not a government service. Audio is not stored. Aadhaar is kept as its last 4 digits only. A person always completes the captcha, the OTP and the final submit.</p>
   </section>
 </main>
 <script>
@@ -122,8 +177,15 @@ async function api(path, opts = {}) {
 }
 
 let handsFree = true, noInput = 0, ttsTimer = null;
+const MODES = { idle: "तैयार", speaking: "बोल रहे हैं", listening: "सुन रहे हैं…", done: "नागरिक ने पुष्टि की" };
+function setMode(m) {
+  if (state && state.phase === "done") m = "done";
+  document.body.dataset.mode = m;
+  $("mode").textContent = m === "listening" && liveSpeaker === "operator" ? "ऑपरेटर को सुन रहे हैं…" : MODES[m];
+}
 function speak(text, then) {
   stopListening();
+  setMode("speaking");
   if (!("speechSynthesis" in window) || !text) { then && then(); return; }
   speechSynthesis.cancel(); clearTimeout(ttsTimer);
   const u = new SpeechSynthesisUtterance(text);
@@ -131,7 +193,7 @@ function speak(text, then) {
   const v = speechSynthesis.getVoices().find((v) => v.lang.startsWith("hi"));
   if (v) u.voice = v;
   let done = false;
-  const finish = () => { if (done) return; done = true; clearTimeout(ttsTimer); setTimeout(() => then && then(), 250); };
+  const finish = () => { if (done) return; done = true; clearTimeout(ttsTimer); setMode("idle"); setTimeout(() => then && then(), 250); };
   u.onend = finish;
   // Some Chrome builds drop onend for long utterances: fall back to a length-based timer.
   ttsTimer = setTimeout(finish, 1500 + text.length * 110);
@@ -145,53 +207,61 @@ let events = [];
 function addEvent(kind, text) {
   events.unshift({ kind, text, t: new Date().toLocaleTimeString() });
   events = events.slice(0, 4);
-  $("events").innerHTML = events.map((e) => `<div class="event ${e.kind}">${esc(e.text)} <small>· ${e.t}</small></div>`).join("");
+  $("events").innerHTML = events.map((e) => `<div class="event ${e.kind}">${esc(e.text)}<time>${e.t}</time></div>`).join("");
 }
 function diffEvents(prev, s) {
   const ids = (x) => new Set((x ? x.warnings : []).map((w) => w.id));
   const before = ids(prev), after = ids(s);
-  const LABEL = { name_match: "Name mismatch detected · नाम मेल नहीं खाता", min_age: "Age below 60 · उम्र 60 से कम",
-                  age_proof: "Age proof missing · उम्र का प्रमाण नहीं" };
-  for (const id of after) if (!before.has(id)) addEvent("bad", "⚠ " + (LABEL[id] || id));
-  for (const id of before) if (!after.has(id)) addEvent("good", "✓ Fixed by voice · ठीक हो गया: " + (LABEL[id] || id).split(" · ")[0]);
+  const LABEL = { name_match: "Name mismatch detected", min_age: "Age below 60", age_proof: "Age proof missing" };
+  for (const id of after) if (!before.has(id)) addEvent("bad", LABEL[id] || id);
+  for (const id of before) if (!after.has(id)) addEvent("good", (LABEL[id] || id) + ": fixed by voice");
   if (prev && s.transcript.some((l) => l.includes("XXXX XXXX")) && !prev.transcript.some((l) => l.includes("XXXX XXXX")))
-    addEvent("good", "🔒 Full Aadhaar masked · सिर्फ़ आख़िरी 4 अंक रखे");
-  if (prev && prev.phase !== "readback" && s.phase === "readback") addEvent("good", "🔊 Read-back started · पढ़कर सुना रहे हैं");
-  if (prev && prev.phase !== "done" && s.phase === "done") addEvent("good", "✓ Consent captured by voice · “हाँ” दर्ज");
+    addEvent("good", "Full Aadhaar number masked to the last 4 digits");
+  if (prev && prev.phase !== "readback" && s.phase === "readback") addEvent("good", "Reading the form back to the citizen");
+  if (prev && prev.phase !== "done" && s.phase === "done") addEvent("good", "Consent captured by voice: “हाँ”");
 }
 
 function render(s) {
   diffEvents(state, s);
-  const prevSay = state && state.say;
+  const prevState = state, prevSay = state && state.say;
   state = s;
   $("say").textContent = s.say;
   if (s.say !== prevSay) { noInput = 0; speak(s.say, afterSpeaking); }
-  $("status").innerHTML =
-    `<span class="pill">${s.fields.filter((f) => f.value !== null).length}/${s.fields.length} filled</span>` +
-    `<span class="pill ${s.phase === "done" ? "done" : ""}">${{ collect: "Collecting", readback: "Waiting for haan", done: "Citizen confirmed ✓" }[s.phase]}</span>`;
-  $("warnings").innerHTML = s.warnings.map((w) => `<div class="warn">⚠ ${esc(w.message)}</div>`).join("");
-  $("form").innerHTML = s.fields.map((f) => {
-    const low = f.value !== null && f.confidence < 0.7;
-    const conf = f.value !== null
-      ? `<span class="conf">${f.source === "operator" ? "typed" : "heard"} · ${Math.round(f.confidence * 100)}%${f.corrected ? " · corrected" : ""}${f.evidence ? " · “" + esc(f.evidence) + "”" : ""}</span>` : "";
-    return `<tr class="${f.value === null ? "empty" : low ? "low" : ""}">
-      <td class="label">${esc(f.label.hi)}<br><small>${esc(f.label.en)}</small></td>
-      <td class="val" data-key="${f.key}" title="Click to edit">${f.value === null ? "—" : esc(f.value)}${conf}</td></tr>`;
+  const filled = s.fields.filter((f) => f.value !== null).length;
+  $("bar").style.width = `${Math.round(100 * filled / s.fields.length)}%`;
+  $("status").innerHTML = `<span><strong>${filled}</strong> of ${s.fields.length} filled</span>` +
+    { collect: "<span>Collecting answers</span>", readback: "<span>Waiting for the citizen's “हाँ”</span>",
+      done: '<span class="ok">Citizen confirmed</span>' }[s.phase];
+  const flagged = new Set(s.warnings.flatMap((w) => w.fields));
+  $("warnings").innerHTML = s.warnings.map((w) => `<div class="warn">${esc(w.message)}${
+    w.a_latin ? `<small>Portal spelling: ${esc(w.a_latin)} vs ${esc(w.b_latin)}. Portals reject names that don't match exactly.</small>` : ""}</div>`).join("");
+  const before = new Map((prevState ? prevState.fields : []).map((f) => [f.key, f.value]));
+  $("form").innerHTML = s.fields.map((f, i) => {
+    const has = f.value !== null;
+    const cls = !has ? "empty" : flagged.has(f.key) ? "flag" : f.confidence < 0.7 ? "low" : "";
+    const fresh = has && before.get(f.key) !== f.value ? " fresh" : "";
+    const meta = has ? `<span class="meta">${f.source === "operator" ? "Typed by operator" : `Heard “${esc(f.evidence)}”`}${
+      f.confidence < 0.7 ? ", needs a check" : ""}${f.corrected ? ", corrected" : ""}</span>` : "";
+    return `<tr class="${cls}${fresh}"><td class="n">${i + 1}</td>
+      <td class="label">${esc(f.label.hi)}<small>${esc(f.label.en)}</small></td>
+      <td class="val" data-key="${f.key}" title="Tap to correct">${has ? esc(f.value) : "—"}${
+        f.latin ? `<span class="latin">Portal: ${esc(f.latin)}</span>` : ""}${meta}</td></tr>`;
   }).join("");
   $("log").innerHTML = s.transcript.slice().reverse().map((line) => {
     const [who, ...rest] = line.split(": ");
-    return `<div class="${who}"><b>${who === "ASSISTANT" ? "🔊" : who}</b> ${esc(rest.join(": "))}</div>`;
+    const name = { ASSISTANT: "App", OPERATOR: "Operator", CITIZEN: "Citizen" }[who] || who;
+    return `<div class="${who}"><b>${name}</b><span>${esc(rest.join(": "))}</span></div>`;
   }).join("");
   $("exportBtn").disabled = s.phase !== "done";
+  if (s.phase === "done") setMode("done");
 }
 
 function esc(x) { return String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
 async function newSession() {
   const info = await api("/api/info");
-  $("engine").textContent = info.extractor === "RuleExtractor" ? "· offline rules (no API key)" : "· Claude";
+  $("engine").textContent = info.extractor === "RuleExtractor" ? "time taken, offline mode" : "time taken, with Claude";
   const s = await api("/api/sessions", { method: "POST", body: JSON.stringify({ form_id: "pension_up" }) });
-  $("formTitle").textContent = "वृद्धावस्था पेंशन";
   $("exportOut").hidden = true;
   state = null; events = []; $("events").innerHTML = ""; render(s);
   timerStart = Date.now(); clearInterval(timerHandle);
@@ -223,7 +293,7 @@ function stopListening() {
   if (rec) { const r = rec; rec = null; r.onend = null; try { r.abort(); } catch (e) {} }
   liveSpeaker = null;
   $("micOp").classList.remove("live"); $("micCit").classList.remove("live");
-  $("listening").hidden = true;
+  if (document.body.dataset.mode === "listening") setMode("idle");
 }
 
 function listen(speaker, auto) {
@@ -233,8 +303,7 @@ function listen(speaker, auto) {
   rec.lang = "hi-IN"; rec.interimResults = true; rec.continuous = false;
   const btn = speaker === "operator" ? $("micOp") : $("micCit");
   btn.classList.add("live");
-  $("listening").hidden = false;
-  $("listening").textContent = speaker === "operator" ? "🎙 सुन रहे हैं: ऑपरेटर…" : "🎙 सुन रहे हैं: नागरिक…";
+  setMode("listening");
   let heard = false;
   const me = rec;
   rec.onresult = (e) => {
@@ -258,7 +327,7 @@ function listen(speaker, auto) {
     noInput += 1;
     if (noInput === 1) listen("citizen", true);
     else if (noInput === 2) speak("क्या आप मुझे सुन पा रहे हैं? " + state.say, afterSpeaking);
-    else $("micNote").textContent = "रुका हुआ। Paused: tap Citizen to continue.";
+    else $("micNote").textContent = "Paused after no answer. Tap “नागरिक बोल रही हैं” to continue.";
   };
   try { rec.start(); } catch (e) {}
 }
@@ -281,13 +350,16 @@ $("newBtn").onclick = newSession;
 $("speakBtn").onclick = () => state && speak(state.say, afterSpeaking);
 $("form").onclick = async (e) => {
   const td = e.target.closest("td.val"); if (!td) return;
-  const v = prompt("Correct value for " + td.dataset.key, ""); if (v === null) return;
+  const v = prompt("Type the correct value", ""); if (v === null) return;
   try { render(await api(`/api/sessions/${state.session_id}/edit`, { method: "POST", body: JSON.stringify({ key: td.dataset.key, value: v }) })); }
   catch (err) { alert(err.message); }
 };
 $("exportBtn").onclick = async () => {
   const data = await api(`/api/sessions/${state.session_id}/export`);
-  $("exportOut").textContent = JSON.stringify(data, null, 2); $("exportOut").hidden = false;
+  $("exportOut").textContent = "Sent to the portal-fill extension (the operator still submits):\n" +
+    JSON.stringify(data.portal_values, null, 2);
+  $("exportOut").hidden = false;
+  addEvent("good", "Sent to portal for the operator to submit");
 };
 speechSynthesis && speechSynthesis.getVoices();
 newSession();

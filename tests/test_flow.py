@@ -153,7 +153,7 @@ def test_full_spoken_conversation_offline_devanagari():
                  "पासबुक पर राम वती लिखा है"]:
         s.add_turn("citizen", said, ex)
     assert s.values["name"] == "रामवती" and s.values["bank_account_name"] == "राम वती"
-    assert "कौन सा सही" in s.say                       # mismatch caught
+    assert "आधार वाला नाम सही है" in s.say               # mismatch caught
     s.add_turn("citizen", "रामवती सही है", ex)
     assert s.values["bank_account_name"] == "रामवती"
     for said in ["SBIN 0001234", "तीस हजार", "हाँ, आधार कार्ड है"]:
@@ -164,3 +164,50 @@ def test_full_spoken_conversation_offline_devanagari():
     s.add_turn("citizen", "हाँ जी, सब सही है", ex)
     assert s.phase == "done"
     assert s.export()["values"]["aadhaar_last4"] == "9012"
+
+
+# ---------- name matching across scripts and spellings ----------
+from backend import names
+
+
+def test_transliteration():
+    assert [names.to_latin(n) for n in ["रामवती", "श्याम लाल", "अंजलि", "राजेन्द्र", "कृष्णा"]] == \
+        ["Ramvati", "Shyam Lal", "Anjali", "Rajendra", "Krishna"]
+
+
+def test_compare_verdicts():
+    assert names.compare("रामवती", "Ramvati")["verdict"] == "same"          # script only
+    assert names.compare("Ramvati", "Ram Wati")["verdict"] == "spelling"    # rejection risk
+    assert names.compare("Laxmi", "लक्ष्मी")["verdict"] == "spelling"
+    assert names.compare("Ramvati", "Sunita")["verdict"] == "different"     # wrong account?
+    assert names.mentions("राम वती सही है", "Ramvati")
+
+
+def _filled(**over):
+    s = SessionStore().create(load_schema("pension_up"))
+    s.add_turn("citizen", "x", Scripted([ups(**(FULL | over))]))
+    return s
+
+
+def test_same_name_in_two_scripts_is_not_flagged():
+    s = _filled(name="रामवती", bank_account_name="Ramvati")
+    assert s.phase == "readback"
+    assert s.export.__self__.latin("name") == "Ramvati"
+
+
+def test_different_person_gets_stronger_question():
+    s = _filled(bank_account_name="Sunita")
+    assert "अलग नाम" in s.say and "अपना बैंक खाता" in s.say
+
+
+def test_spelling_conflict_resolved_by_yes():
+    s = _filled(bank_account_name="Ram Wati")
+    s.add_turn("citizen", "हाँ जी", Scripted([]))
+    assert s.values["bank_account_name"] == "Ramvati" and s.phase == "readback"
+
+
+def test_export_has_portal_spelling():
+    s = _filled(name="रामवती", bank_account_name="रामवती", village="फतेहपुर")
+    s.add_turn("citizen", "हाँ", Scripted([ups(consent="yes")]))
+    out = s.export()["portal_values"]
+    assert out["name"] == "Ramvati" and out["village"] == "Fatehpur"

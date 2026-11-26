@@ -3,15 +3,7 @@
 Rules are data, never code - each rule type is implemented here, so a schema
 cannot run arbitrary expressions.
 """
-from difflib import SequenceMatcher
-
-
-def _norm(s: str) -> str:
-    return " ".join(str(s).lower().split())
-
-
-def name_similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, _norm(a).replace(" ", ""), _norm(b).replace(" ", "")).ratio()
+from . import names
 
 
 def check(schema: dict, values: dict) -> list[dict]:
@@ -32,11 +24,14 @@ def check(schema: dict, values: dict) -> list[dict]:
                                  "message": rule["message"]["hi"].format(**fmt)})
         elif t == "name_match":
             a, b = values.get(rule["a"]), values.get(rule["b"])
-            # Portals match names exactly, so any difference (even spacing) is a rejection risk.
-            if a is not None and b is not None and _norm(a) != _norm(b):
-                failures.append({"id": rule["id"], "fields": [rule["a"], rule["b"]],
-                                 "similarity": round(name_similarity(a, b), 2),
-                                 "message": rule["message"]["hi"].format(**fmt)})
+            # Same name in another script (रामवती / Ramvati) is fine. Any other difference, even a
+            # space, is a rejection risk because portals compare names exactly.
+            if a is not None and b is not None:
+                result = names.compare(a, b)
+                if result["verdict"] != "same":
+                    key = "message_different" if result["verdict"] == "different" else "message"
+                    failures.append({"id": rule["id"], "fields": [rule["a"], rule["b"]], **result,
+                                     "message": rule.get(key, rule["message"])["hi"].format(**fmt)})
         else:
             raise ValueError(f"unknown rule type {t!r} in {rule['id']}")
     return failures
