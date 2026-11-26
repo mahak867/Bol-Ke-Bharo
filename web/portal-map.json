@@ -1,19 +1,59 @@
 {
-  "form_id": "pension_up",
+  "form_id": [
+    "pension_up",
+    "widow_pension_up"
+  ],
   "note": "Maps Bol Ke Bharo field keys to portal form controls. One map per portal page. This one targets the practice portal; a real portal needs its own selectors.",
   "fields": {
-    "name": {"selector": "#applicantName"},
-    "guardian_name": {"selector": "#guardianName"},
-    "age": {"selector": "#age"},
-    "gender": {"selector": "#gender", "options": {"female": "F", "male": "M", "other": "O"}},
-    "district": {"selector": "#district"},
-    "village": {"selector": "#village"},
-    "mobile": {"selector": "#mobile"},
-    "aadhaar_last4": {"selector": "#aadhaarLast4"},
-    "bank_account_name": {"selector": "#accountHolder"},
-    "ifsc": {"selector": "#ifsc"},
-    "annual_income": {"selector": "#income"},
-    "has_age_proof": {"selector": "#ageProof", "type": "checkbox"}
+    "name": {
+      "selector": "#applicantName"
+    },
+    "guardian_name": {
+      "selector": "#guardianName"
+    },
+    "age": {
+      "selector": "#age"
+    },
+    "gender": {
+      "selector": "#gender",
+      "options": {
+        "female": "F",
+        "male": "M",
+        "other": "O"
+      }
+    },
+    "district": {
+      "selector": "#district"
+    },
+    "village": {
+      "selector": "#village"
+    },
+    "mobile": {
+      "selector": "#mobile"
+    },
+    "aadhaar_last4": {
+      "selector": "#aadhaarLast4"
+    },
+    "bank_account_name": {
+      "selector": "#accountHolder"
+    },
+    "ifsc": {
+      "selector": "#ifsc"
+    },
+    "annual_income": {
+      "selector": "#income"
+    },
+    "has_age_proof": {
+      "selector": "#ageProof",
+      "type": "checkbox"
+    },
+    "late_husband_name": {
+      "selector": "#guardianName"
+    }
   },
-  "never_touch": ["#captcha", "#otp", "#submitBtn"]
+  "never_touch": [
+    "#captcha",
+    "#otp",
+    "#submitBtn"
+  ]
 }

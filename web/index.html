@@ -34,7 +34,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 header { display: flex; align-items: baseline; gap: 18px; padding: 14px 24px; border-bottom: 1.5px solid var(--rule); flex-wrap: wrap; }
 .brand { font-weight: 800; font-size: 22px; letter-spacing: -.01em; }
 .brand small { font-weight: 500; color: var(--ink-2); font-size: 17px; margin-left: 6px; }
-.formname { color: var(--ink-2); }
+.formname { color: var(--ink-2); border: 0; background: transparent; font-size: 17px; padding: 2px 0; cursor: pointer; }
 .clock { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 22px; }
 .clock small { display: block; font-weight: 400; font-size: 13px; color: var(--ink-2); text-align: right; }
 
@@ -121,7 +121,7 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
 <body data-mode="idle">
 <header>
   <div class="brand">Bol Ke Bharo <small>बोल के भरो</small></div>
-  <div class="formname" id="formTitle">वृद्धावस्था पेंशन आवेदन</div>
+  <select class="formname" id="formPick" aria-label="Form to fill"></select>
   <div class="clock"><span id="timer">0:00</span><small id="engine"></small></div>
   <button id="newBtn">New application</button>
 </header>
@@ -151,7 +151,7 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
   </section>
   <section class="sheet" aria-label="Application">
     <h2>आवेदन पत्र</h2>
-    <div class="sub">Old-age pension application, filled from the conversation</div>
+    <div class="sub" id="sheetSub"></div>
     <div class="progress"><i id="bar" style="width:0"></i></div>
     <div class="status" id="status"></div>
     <div class="events" id="events" aria-live="polite"></div>
@@ -258,7 +258,11 @@ function esc(x) { return String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 async function newSession() {
   const info = await api("/api/info");
   $("engine").textContent = info.extractor === "RuleExtractor" ? "time taken, offline mode" : "time taken, with Claude";
-  const s = await api("/api/sessions", { method: "POST", body: JSON.stringify({ form_id: "pension_up" }) });
+  if (!$("formPick").options.length)
+    $("formPick").innerHTML = info.forms.map((f) => `<option value="${f.id}">${esc(f.title.hi)}</option>`).join("");
+  const form = info.forms.find((f) => f.id === $("formPick").value);
+  $("sheetSub").textContent = `${form.title.en}, filled from the conversation`;
+  const s = await api("/api/sessions", { method: "POST", body: JSON.stringify({ form_id: form.id }) });
   state = null; events = []; $("events").innerHTML = ""; render(s);
   timerStart = Date.now(); clearInterval(timerHandle);
   timerHandle = setInterval(() => {
@@ -343,6 +347,7 @@ $("hf").onchange = (e) => { handsFree = e.target.checked; if (!handsFree) stopLi
 
 $("typed").onsubmit = (e) => { e.preventDefault(); sendTurn($("who").value, $("text").value); $("text").value = ""; };
 $("newBtn").onclick = newSession;
+$("formPick").onchange = newSession;
 $("speakBtn").onclick = () => state && speak(state.say, afterSpeaking);
 $("form").onclick = async (e) => {
   const td = e.target.closest("td.val"); if (!td) return;

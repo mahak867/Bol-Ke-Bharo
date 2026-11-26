@@ -99,7 +99,7 @@ _FILLER = set("""mera meri mere naam hai hain ji main hoon hun mein me se ka ki 
 gaon gaon ka jila zila district village rehta rehti rehte aata aati pati pita pitaji father husband
 passbook bank aadhaar card ka wala wali haan
 मेरा मेरी मेरे नाम है हैं जी मैं हूँ हूं हु में से का की के को पर लिखा हुआ था गाँव गांव गाव जिला ज़िला जिले
-ज़िले जनपद मोहल्ला वार्ड रहता रहती रहते आता आती पति पिता पिताजी पासबुक बैंक आधार कार्ड वाला वाली हाँ हां""".split())
+ज़िले जनपद मोहल्ला स्वर्गीय स्व॰ स्व. स्वर्गवासी थी थे late swargiya वार्ड रहता रहती रहते आता आती पति पिता पिताजी पासबुक बैंक आधार कार्ड वाला वाली हाँ हां""".split())
 
 
 def _number(toks: list[str]) -> int | None:

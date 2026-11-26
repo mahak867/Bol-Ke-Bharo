@@ -249,3 +249,14 @@ def test_latest_confirmed_for_extension():
         pass
     s.add_turn("citizen", "हाँ", Scripted([ups(consent="yes")]))
     assert store.latest_confirmed().export()["portal_values"]["name"] == "Ramvati"
+
+
+def test_second_form_is_only_a_schema_file():
+    s = SessionStore().create(load_schema("widow_pension_up"))
+    ex = RuleExtractor()
+    for said in ["जी, मेरा नाम सुनीता देवी है", "स्वर्गीय पति का नाम रमेश था", "मेरी उम्र 45 साल है", "लखनऊ जिले में",
+                 "रामपुर गाँव", "मेरा नंबर 9876543210 है", "आधार 1234 5678 9012", "पासबुक पर सुनीता देवी लिखा है",
+                 "SBIN 0001234", "बीस हजार", "नहीं"]:
+        s.add_turn("citizen", said, ex)
+    assert s.values["late_husband_name"] == "रमेश" and s.values["has_death_certificate"] is False
+    assert "मृत्यु प्रमाण पत्र के बिना" in s.say                       # widow-specific rule

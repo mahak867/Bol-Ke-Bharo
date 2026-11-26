@@ -41,7 +41,8 @@ def _session(sid):
 
 @app.get("/api/info")
 def info():
-    return {"forms": list_schemas(), "extractor": type(extractor).__name__}
+    forms = [{"id": f, "title": load_schema(f)["title"]} for f in list_schemas()]
+    return {"forms": forms, "extractor": type(extractor).__name__}
 
 
 @app.post("/api/sessions")
