@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bol Ke Bharo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* Tokens: a CSC counter. Form paper, fountain-pen ink, a rubber stamp, haldi for "listening",
    sindoor for rejection risk, leaf green for consent. */
@@ -67,7 +68,6 @@ body[data-mode="done"] .mode { color: var(--leaf); }
 .hf input { width: 18px; height: 18px; accent-color: var(--stamp); }
 .chips { margin-top: 6px; font-size: 14px; color: var(--ink-2); }
 .chips b { color: var(--ink); font-weight: 700; }
-.listening { display: none; }
 .interim { min-height: 1.5em; margin-top: 10px; color: var(--ink-2); font-style: italic; }
 .typed { display: flex; gap: 8px; margin-top: 8px; }
 .typed select, .typed input { padding: 10px; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--sheet); min-width: 0; }
@@ -140,7 +140,6 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
     </div>
     <label class="hf"><input type="checkbox" id="hf" checked> Hands-free: listens by itself after every question</label>
     <div class="chips">Say <b>“दोबारा”</b> to hear it again, <b>“रुको”</b> to pause, or <b>“नहीं, …”</b> to correct.</div>
-    <span class="listening" id="listening" hidden></span>
     <div class="interim" id="interim"></div>
     <form class="typed" id="typed">
       <select id="who" aria-label="Speaker"><option value="citizen">Citizen</option><option value="operator">Operator</option></select>
@@ -212,9 +211,9 @@ function addEvent(kind, text) {
 function diffEvents(prev, s) {
   const ids = (x) => new Set((x ? x.warnings : []).map((w) => w.id));
   const before = ids(prev), after = ids(s);
-  const LABEL = { name_match: "Name mismatch detected", min_age: "Age below 60", age_proof: "Age proof missing" };
-  for (const id of after) if (!before.has(id)) addEvent("bad", LABEL[id] || id);
-  for (const id of before) if (!after.has(id)) addEvent("good", (LABEL[id] || id) + ": fixed by voice");
+  const label = new Map([...(prev ? prev.warnings : []), ...s.warnings].map((w) => [w.id, w.label.en]));
+  for (const id of after) if (!before.has(id)) addEvent("bad", label.get(id));
+  for (const id of before) if (!after.has(id)) addEvent("good", label.get(id) + ": fixed by voice");
   if (prev && s.transcript.some((l) => l.includes("XXXX XXXX")) && !prev.transcript.some((l) => l.includes("XXXX XXXX")))
     addEvent("good", "Full Aadhaar number masked to the last 4 digits");
   if (prev && prev.phase !== "readback" && s.phase === "readback") addEvent("good", "Reading the form back to the citizen");
@@ -223,25 +222,24 @@ function diffEvents(prev, s) {
 
 function render(s) {
   diffEvents(state, s);
-  const prevState = state, prevSay = state && state.say;
+  const prev = state;
   state = s;
   $("say").textContent = s.say;
-  if (s.say !== prevSay) { noInput = 0; speak(s.say, afterSpeaking); }
+  if (!prev || s.say !== prev.say) { noInput = 0; speak(s.say, afterSpeaking); }
   const filled = s.fields.filter((f) => f.value !== null).length;
   $("bar").style.width = `${Math.round(100 * filled / s.fields.length)}%`;
   $("status").innerHTML = `<span><strong>${filled}</strong> of ${s.fields.length} filled</span>` +
     { collect: "<span>Collecting answers</span>", readback: "<span>Waiting for the citizen's “हाँ”</span>",
       done: '<span class="ok">Citizen confirmed</span>' }[s.phase];
   const flagged = new Set(s.warnings.flatMap((w) => w.fields));
-  $("warnings").innerHTML = s.warnings.map((w) => `<div class="warn">${esc(w.message)}${
-    w.a_latin ? `<small>Portal spelling: ${esc(w.a_latin)} vs ${esc(w.b_latin)}. Portals reject names that don't match exactly.</small>` : ""}</div>`).join("");
-  const before = new Map((prevState ? prevState.fields : []).map((f) => [f.key, f.value]));
+  $("warnings").innerHTML = s.warnings.map((w) => `<div class="warn">${esc(w.message)}${w.detail ? `<small>${esc(w.detail)}</small>` : ""}</div>`).join("");
+  const before = new Map((prev ? prev.fields : []).map((f) => [f.key, f.value]));
   $("form").innerHTML = s.fields.map((f, i) => {
     const has = f.value !== null;
-    const cls = !has ? "empty" : flagged.has(f.key) ? "flag" : f.confidence < 0.7 ? "low" : "";
+    const cls = !has ? "empty" : flagged.has(f.key) ? "flag" : f.low ? "low" : "";
     const fresh = has && before.get(f.key) !== f.value ? " fresh" : "";
     const meta = has ? `<span class="meta">${f.source === "operator" ? "Typed by operator" : `Heard “${esc(f.evidence)}”`}${
-      f.confidence < 0.7 ? ", needs a check" : ""}${f.corrected ? ", corrected" : ""}</span>` : "";
+      f.low ? ", needs a check" : ""}${f.corrected ? ", corrected" : ""}</span>` : "";
     return `<tr class="${cls}${fresh}"><td class="n">${i + 1}</td>
       <td class="label">${esc(f.label.hi)}<small>${esc(f.label.en)}</small></td>
       <td class="val" data-key="${f.key}" title="Tap to correct">${has ? esc(f.value) : "—"}${

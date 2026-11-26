@@ -10,6 +10,7 @@ Portals compare names exactly, so the guard needs to tell three cases apart:
 import re
 import unicodedata
 from difflib import SequenceMatcher
+from functools import lru_cache
 
 # --- Devanagari -> Latin (simple, readable romanisation, as Indians type names) ---------------------
 _CONS = {
@@ -73,51 +74,53 @@ def _word_to_latin(word: str) -> str:
     return "".join(out)
 
 
+_DEVANAGARI = re.compile("[\u0900-\u097F]")
+
+
+def has_devanagari(text) -> bool:
+    return bool(_DEVANAGARI.search(str(text)))
+
+
+@lru_cache(maxsize=512)
 def to_latin(name: str) -> str:
-    """'रामवती' -> 'Ramvati', 'श्याम लाल' -> 'Shyam Lal'. Latin input is only tidied."""
+    """'रामवती' -> 'Ramvati', 'श्याम लाल' -> 'Shyam Lal'. Latin input is only tidied (case, spaces)."""
     words = []
     for w in str(name).split():
-        latin = _word_to_latin(w) if re.search(r"[ऀ-ॿ]", w) else w
+        latin = _word_to_latin(w) if has_devanagari(w) else w
         words.append(latin[:1].upper() + latin[1:].lower())
     return " ".join(words)
 
 
 # --- Sound-alike key ---------------------------------------------------------------------------------
-_KEY_RULES = [
-    (r"[^a-z]", ""),          # spaces, dots, hyphens
+_KEY_RULES = [(re.compile(p), r) for p, r in [
+    (r"[^a-z]", ""),            # spaces, dots, hyphens
     (r"w", "v"), (r"x", "ks"), (r"ph", "f"), (r"sh", "s"), (r"z", "j"), (r"q", "k"),
     (r"ee|ii|y$", "i"), (r"oo|uu", "u"), (r"aa", "a"),
-    (r"(.)\1+", r"\1"),       # doubled letters
+    (r"(.)\1+", r"\1"),         # doubled letters
     (r"([kgcjtdpb])h", r"\1"),  # aspiration is often dropped in spelling
-]
+]]
 
 
+@lru_cache(maxsize=2048)
 def sound_key(name: str) -> str:
     s = to_latin(name).lower()
     for pattern, repl in _KEY_RULES:
-        s = re.sub(pattern, repl, s)
+        s = pattern.sub(repl, s)
     return s
 
 
 def compare(a: str, b: str) -> dict:
     la, lb = to_latin(a), to_latin(b)
-    same_text = " ".join(la.lower().split()) == " ".join(lb.lower().split())
     similarity = round(SequenceMatcher(None, sound_key(a), sound_key(b)).ratio(), 2)
-    if same_text:
-        verdict = "same"
-    elif sound_key(a) == sound_key(b) or similarity >= 0.8:
-        verdict = "spelling"
-    else:
-        verdict = "different"
+    # Equal sound keys give similarity 1.0, so one threshold covers "sounds the same".
+    verdict = "same" if la == lb else "spelling" if similarity >= 0.8 else "different"
     return {"verdict": verdict, "similarity": similarity, "a_latin": la, "b_latin": lb}
 
 
-def mentions(spoken: str, name: str) -> bool:
-    """Did the speaker say this name? Works across script and spacing ('रामवती सही है' mentions 'Ramvati')."""
-    target = sound_key(name)
+def mentions(spoken: str, *candidates: str) -> str | None:
+    """The first candidate the speaker named, in any script or spacing, else None.
+    ('रामवती सही है', 'Ramvati') -> 'Ramvati'."""
     words = spoken.split()
-    for i in range(len(words)):
-        for j in range(i + 1, min(len(words), i + 4) + 1):
-            if sound_key(" ".join(words[i:j])) == target:
-                return True
-    return False
+    said = {sound_key(" ".join(words[i:j]))
+            for i in range(len(words)) for j in range(i + 1, min(len(words), i + 4) + 1)}
+    return next((c for c in candidates if sound_key(c) in said), None)

@@ -10,6 +10,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from .lexicon import DIGITS, answer, tokens
+
 MODEL = os.environ.get("BKB_MODEL", "claude-sonnet-5-5")
 
 
@@ -89,10 +91,6 @@ _HINDI_NUM = {"saath": 60, "sath": 60, "sattar": 70, "assi": 80, "nabbe": 90, "p
               "bees": 20, "tees": 30, "chalis": 40, "pachas": 50, "ek": 1, "do": 2, "teen": 3, "paanch": 5, "das": 10,
               "बीस": 20, "तीस": 30, "चालीस": 40, "पचास": 50, "एक": 1, "दो": 2, "तीन": 3, "पांच": 5, "पाँच": 5, "दस": 10,
               "साठ": 60, "सत्तर": 70, "अस्सी": 80, "नब्बे": 90, "पचपन": 55, "पैंसठ": 65, "पचहत्तर": 75}
-_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
-_PUNCT = "।,.?!:;\"'"
-_YES = {"haan", "han", "ha", "ji", "yes", "sahi", "theek", "हाँ", "हां", "हा", "जी", "सही", "ठीक", "बिल्कुल"}
-_NO = {"nahi", "nahin", "na", "no", "galat", "नहीं", "नही", "ना", "गलत", "ग़लत"}
 _FEMALE = {"mahila", "aurat", "female", "stree", "महिला", "औरत", "स्त्री"}
 _MALE = {"purush", "aadmi", "male", "mard", "पुरुष", "आदमी", "मर्द"}
 _MULT = {"hazaar": 1000, "hazar": 1000, "हज़ार": 1000, "हजार": 1000, "lakh": 100000, "लाख": 100000}
@@ -104,13 +102,9 @@ passbook bank aadhaar card ka wala wali haan
 ज़िले जनपद मोहल्ला वार्ड रहता रहती रहते आता आती पति पिता पिताजी पासबुक बैंक आधार कार्ड वाला वाली हाँ हां""".split())
 
 
-def _tokens(text: str) -> list[str]:
-    return [t.strip(_PUNCT) for t in text.translate(_DIGITS).split() if t.strip(_PUNCT)]
-
-
-def _number(tokens: list[str]) -> int | None:
+def _number(toks: list[str]) -> int | None:
     total, current = 0, None
-    for t in tokens:
+    for t in toks:
         low = t.lower()
         if re.fullmatch(r"\d+", low):
             current = int(low)
@@ -131,8 +125,8 @@ class RuleExtractor:
     def extract(self, schema: dict, state: dict, speaker: str, segment: str, recent: list[str],
                 expected: str | None = None) -> Extraction:
         ups: list[FieldUpdate] = []
-        text = segment.translate(_DIGITS)
-        toks = _tokens(segment)
+        text = segment.translate(DIGITS)
+        toks = tokens(segment)
         low = [t.lower() for t in toks]
         if m := re.search(r"(\d{2,3})\s*(saal|sal|years|varsh|साल|वर्ष)", text.lower()):
             ups.append(FieldUpdate(key="age", value=m.group(1), confidence=0.9, evidence=m.group(0)))
@@ -147,12 +141,7 @@ class RuleExtractor:
         if m := re.search(r"([A-Z]{4}0[A-Z0-9]{6})", text.upper().replace(" ", "")):
             ups.append(FieldUpdate(key="ifsc", value=m.group(1), confidence=0.85, evidence=m.group(1)))
 
-        consent = None
-        if speaker == "citizen" and low:
-            if low[0] in _YES:
-                consent = "yes"
-            elif low[0] in _NO or any(t in _NO for t in low[:3]):
-                consent = "no"
+        consent = answer(segment) if speaker == "citizen" else None
 
         field = next((f for f in schema["fields"] if f["key"] == expected), None)
         if speaker == "citizen" and field and not any(u.key == expected for u in ups):

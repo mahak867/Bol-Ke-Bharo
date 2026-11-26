@@ -3,6 +3,8 @@ import json
 import re
 from pathlib import Path
 
+from .lexicon import DIGITS, NO, YES
+
 SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 
 
@@ -21,9 +23,8 @@ def field_map(schema: dict) -> dict[str, dict]:
     return {f["key"]: f for f in schema["fields"]}
 
 
-_DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
-_YES = {"true", "yes", "haan", "han", "ha", "हाँ", "हां", "ji", "जी", "y", "1"}
-_NO = {"false", "no", "nahi", "nahin", "na", "नहीं", "ना", "n", "0"}
+_YES = YES | {"true", "y", "1"}
+_NO = NO | {"false", "n", "0"}
 
 
 def coerce(field: dict, raw):
@@ -31,7 +32,7 @@ def coerce(field: dict, raw):
     if raw is None:
         raise ValueError("empty")
     t = field["type"]
-    s = str(raw).strip().translate(_DEVANAGARI_DIGITS)
+    s = str(raw).strip().translate(DIGITS)
     if t == "int":
         digits = re.sub(r"[^\d]", "", s)
         if not digits:

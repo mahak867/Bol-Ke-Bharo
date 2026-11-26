@@ -3,11 +3,11 @@ import time
 import uuid
 
 from . import guard, names
+from .lexicon import answer
 from .privacy import mask_aadhaar, mask_for_display, mentions_secret
 from .schema import coerce, field_map
 
 LOW_CONFIDENCE = 0.7
-_YES_WORDS = {"हाँ", "हां", "जी", "haan", "han", "ji", "yes", "सही"}
 SESSION_TTL_SECONDS = 30 * 60
 
 BOOL_HI = {True: "हाँ", False: "नहीं"}
@@ -92,12 +92,9 @@ class Session:
         if not f or f["id"] != "name_match":
             return False
         a, b = f["fields"]
-        chosen = None
-        if names.mentions(text, self.values[a]):
-            chosen = self.values[a]          # Aadhaar is the reference when both sound the same
-        elif names.mentions(text, self.values[b]):
-            chosen = self.values[b]
-        elif f.get("verdict") == "spelling" and text.split() and text.split()[0].strip("।,.!") in _YES_WORDS:
+        # Aadhaar (field a) is the reference when both spellings sound the same.
+        chosen = names.mentions(text, self.values[a], self.values[b])
+        if chosen is None and f.get("verdict") == "spelling" and answer(text) == "yes":
             chosen = self.values[a]
         if chosen is None:
             return False
@@ -143,9 +140,9 @@ class Session:
         return mask_for_display(self.fields[key], v)
 
     def latin(self, key):
-        """Portal spelling of a Hindi-script text value (रामवती -> Ramvati), else None."""
+        """Portal spelling of a Hindi-script value, for fields the schema marks portal_script=latin."""
         v = self.values.get(key)
-        if self.fields[key]["type"] == "string" and isinstance(v, str) and any("\u0900" <= c <= "\u097f" for c in v):
+        if self.fields[key].get("portal_script") == "latin" and names.has_devanagari(v):
             return names.to_latin(v)
         return None
 
@@ -158,6 +155,13 @@ class Session:
             return " ".join(str(v))
         return self.display(key)
 
+    def warnings(self) -> list[dict]:
+        """Guard result for the current values, computed once per change."""
+        snapshot = tuple(sorted((k, str(v)) for k, v in self.values.items()))
+        if getattr(self, "_warnings_for", None) != snapshot:
+            self._warnings_for, self._warnings = snapshot, guard.check(self.schema, self.values)
+        return self._warnings
+
     def missing(self) -> list[str]:
         return [f["key"] for f in self.schema["fields"] if f.get("required") and f["key"] not in self.values]
 
@@ -167,7 +171,7 @@ class Session:
 
         self.expecting, self.open_failure = None, None
         # 1. Rejection risks we haven't asked about with these values.
-        for failure in guard.check(self.schema, self.values):
+        for failure in self.warnings():
             snapshot = {k: self.values.get(k) for k in failure["fields"]}
             if self.asked_failures.get(failure["id"]) != snapshot:
                 self.asked_failures[failure["id"]] = snapshot
@@ -205,11 +209,12 @@ class Session:
                 {"key": f["key"], "label": f["label"], "required": f.get("required", False),
                  "value": self.display(f["key"]) if f["key"] in self.values else None,
                  "latin": self.latin(f["key"]),
+                 "low": f["key"] in self.meta and self.meta[f["key"]]["confidence"] < LOW_CONFIDENCE,
                  **({k: self.meta[f["key"]][k] for k in ("confidence", "evidence", "corrected", "source")}
                     if f["key"] in self.meta else {})}
                 for f in self.schema["fields"]
             ],
-            "warnings": guard.check(self.schema, self.values),
+            "warnings": self.warnings(),
             "missing": self.missing(),
             "consent": self.consent,
             "transcript": self.transcript[-20:],
@@ -222,7 +227,7 @@ class Session:
             raise PermissionError("citizen has not confirmed the read-back")
         portal = {k: (self.latin(k) or v) for k, v in self.values.items()}
         return {"form_id": self.schema["form_id"], "values": self.values, "portal_values": portal,
-                "consent_at": self.consent["at"], "warnings": guard.check(self.schema, self.values)}
+                "consent_at": self.consent["at"], "warnings": self.warnings()}
 
 
 class SessionStore:

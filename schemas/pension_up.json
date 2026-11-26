@@ -19,7 +19,8 @@
       },
       "readback": {
         "hi": "आपका नाम {value} है।"
-      }
+      },
+      "portal_script": "latin"
     },
     {
       "key": "guardian_name",
@@ -34,7 +35,8 @@
       },
       "readback": {
         "hi": "पिता या पति का नाम {value} है।"
-      }
+      },
+      "portal_script": "latin"
     },
     {
       "key": "age",
@@ -147,7 +149,8 @@
       },
       "readback": {
         "hi": "पासबुक पर नाम {value} है।"
-      }
+      },
+      "portal_script": "latin"
     },
     {
       "key": "ifsc",
@@ -204,6 +207,10 @@
       "value": 60,
       "message": {
         "hi": "आपकी उम्र {age} साल बताई गई है। पेंशन के लिए 60 साल होना ज़रूरी है। क्या उम्र सही है?"
+      },
+      "label": {
+        "en": "Age below 60",
+        "hi": "उम्र 60 से कम"
       }
     },
     {
@@ -216,6 +223,13 @@
       },
       "message_different": {
         "hi": "आधार पर नाम {name} है, लेकिन पासबुक पर {bank_account_name}। ये दो अलग नाम लगते हैं। क्या यह आपका अपना बैंक खाता है?"
+      },
+      "label": {
+        "en": "Name mismatch detected",
+        "hi": "नाम मेल नहीं खाता"
+      },
+      "detail": {
+        "en": "Portal spelling: {name_latin} vs {bank_account_name_latin}. Portals reject names that don't match exactly."
       }
     },
     {
@@ -224,6 +238,10 @@
       "field": "has_age_proof",
       "message": {
         "hi": "उम्र के प्रमाण के बिना आवेदन रुक सकता है। क्या घर पर आधार, वोटर कार्ड या जन्म प्रमाण पत्र है?"
+      },
+      "label": {
+        "en": "Age proof missing",
+        "hi": "उम्र का प्रमाण नहीं"
       }
     }
   ],

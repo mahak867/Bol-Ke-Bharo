@@ -83,6 +83,7 @@ const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURI
   await page.goto(card("Conversation in. Verified application out.", [
     "🎙 Hands-free: listens after every question, retries on silence, “दोबारा” and “रुको” voice commands",
     "⚠ Rejection guard: name mismatch, age below 60, missing age proof — fixed by voice at the counter",
+    "🔤 Names matched across Hindi and English script: रामवती = Ramvati, but Ramvati ≠ Ram Wati",
     "🔊 Spoken read-back, digit by digit, and a recorded “हाँ” before anything can be exported",
     "🔒 Full Aadhaar masked to last 4 digits · no audio stored · a person always does the final submit",
     "🧩 Every form is one JSON schema: pension today, scholarships and ration cards next",

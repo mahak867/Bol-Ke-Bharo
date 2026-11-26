@@ -18,14 +18,14 @@ rejection guard catches mistakes, and everything is read back to the citizen for
 | **Voice-first experience** | Hands-free: after every spoken question it listens automatically. Silence gets a quiet retry, then a re-ask, then a pause. Voice commands: “दोबारा” (repeat), “रुको” (pause). Numbers are read back digit by digit. Nobody types. |
 | **India relevance** | Built for the ~5.67 lakh Common Service Centres (MeitY, Oct 2025) where operators fill pension forms for citizens who can't. Works in Devanagari Hindi and Hinglish, understands “तीस हजार” and “अड़सठ साल”, masks Aadhaar. |
 | **Working product** | Full pension application by voice, end to end, tested: 11 unit tests plus a browser test that completes a whole application with zero taps. Runs with no API key (offline extractor) or with Claude for free-form conversation. |
-| **Originality** | Not a chatbot that answers questions: it listens to a **two-person** conversation, fills a real form, and **catches rejection causes** (Aadhaar vs passbook name mismatch) at the counter, then gets spoken consent before export. |
+| **Originality** | Not a chatbot that answers questions: it listens to a **two-person** conversation, fills a real form, and **catches rejection causes** at the counter. Its name matcher knows रामवती and Ramvati are the same name in two scripts, but Ramvati and Ram Wati will be rejected by a portal, and Ramvati vs Sunita may be the wrong bank account. Then it gets spoken consent before export. |
 
 ## Status
 
 | Layer | State |
 |---|---|
 | L1 Conversation → form | ✅ Claude extractor (structured output) + offline slot-filling extractor for Hindi/Hinglish |
-| L2 Rejection guard + read-back + "हाँ" consent | ✅ name mismatch (resolved by voice), minimum age, age proof |
+| L2 Rejection guard + read-back + "हाँ" consent | ✅ cross-script name matching (`backend/names.py`: Devanagari → portal spelling, sound-alike keys), minimum age, age proof |
 | Voice loop | ✅ Hands-free turn-taking, no-input retry ladder, voice commands, on-screen event labels |
 | Speech | Browser Web Speech API (`hi-IN`) for listening and speaking. Sarvam / Bhashini are the next step. |
 | L3 Portal autofill extension | ⏳ `/export` already gives the final JSON |
@@ -67,6 +67,10 @@ mic (browser, hi-IN) ──text──► POST /turn ──► mask Aadhaar ─�
 Dialog priority each turn: (1) a rejection risk not yet asked about, (2) the next missing field,
 (3) a low-confidence value to confirm, (4) a full read-back that needs a spoken "हाँ".
 Any change after the read-back requires a new read-back. `/export` is refused until the citizen confirms.
+
+## Design
+
+The UI follows Anthropic's open-source `frontend-design` skill: one typeface built for Hindi and English (Mukta, by Indian foundry Ek Type), colours taken from the CSC counter (form paper, ink, rubber-stamp indigo, haldi for "listening", sindoor for rejection risk), one bold element (the voice orb next to the current question), and a form laid out like the printed one it replaces. Works on phones and in dark mode.
 
 ## Adding a form
 

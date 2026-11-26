@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from backend import guard
+from backend import guard, names
 from backend.dialog import SessionStore
 from backend.extractor import Extraction, FieldUpdate, RuleExtractor
 from backend.privacy import mask_aadhaar
@@ -167,7 +167,6 @@ def test_full_spoken_conversation_offline_devanagari():
 
 
 # ---------- name matching across scripts and spellings ----------
-from backend import names
 
 
 def test_transliteration():
@@ -180,7 +179,7 @@ def test_compare_verdicts():
     assert names.compare("Ramvati", "Ram Wati")["verdict"] == "spelling"    # rejection risk
     assert names.compare("Laxmi", "लक्ष्मी")["verdict"] == "spelling"
     assert names.compare("Ramvati", "Sunita")["verdict"] == "different"     # wrong account?
-    assert names.mentions("राम वती सही है", "Ramvati")
+    assert names.mentions("राम वती सही है", "Ramvati") == "Ramvati"
 
 
 def _filled(**over):
@@ -192,7 +191,7 @@ def _filled(**over):
 def test_same_name_in_two_scripts_is_not_flagged():
     s = _filled(name="रामवती", bank_account_name="Ramvati")
     assert s.phase == "readback"
-    assert s.export.__self__.latin("name") == "Ramvati"
+    assert s.latin("name") == "Ramvati"
 
 
 def test_different_person_gets_stronger_question():
@@ -210,4 +209,4 @@ def test_export_has_portal_spelling():
     s = _filled(name="रामवती", bank_account_name="रामवती", village="फतेहपुर")
     s.add_turn("citizen", "हाँ", Scripted([ups(consent="yes")]))
     out = s.export()["portal_values"]
-    assert out["name"] == "Ramvati" and out["village"] == "Fatehpur"
+    assert out["name"] == "Ramvati" and out["village"] == "फतेहपुर"   # only name fields are romanised
