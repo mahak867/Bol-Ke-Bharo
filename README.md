@@ -26,9 +26,32 @@ rejection guard catches mistakes, and everything is read back to the citizen for
 |---|---|
 | L1 Conversation → form | ✅ Claude extractor (structured output) + offline slot-filling extractor for Hindi/Hinglish |
 | L2 Rejection guard + read-back + "हाँ" consent | ✅ cross-script name matching (`backend/names.py`: Devanagari → portal spelling, sound-alike keys), minimum age, age proof |
-| Voice loop | ✅ Hands-free turn-taking, no-input retry ladder, voice commands, on-screen event labels |
+| Voice loop | ✅ Hands-free turn-taking, no-input retry ladder, voice commands (“दोबारा”, “रुको”, “गाँव बदलो”), on-screen event labels |
 | Speech | Browser Web Speech API (`hi-IN`) for listening and speaking. Sarvam / Bhashini are the next step. |
-| L3 Portal autofill extension | ⏳ `/export` already gives the final JSON |
+| L3 Portal autofill | ✅ Practice portal fills itself (`web/portal.html`); Chrome extension in `extension/` fills the open portal tab. Never touches captcha, OTP or submit. |
+| Languages | ✅ Hindi / Hinglish and Tamil (questions, read-back, voice commands, Tamil name romanisation) |
+| Forms | ✅ Old-age pension and widow pension, each one JSON file in `schemas/` |
+
+## Measured results
+
+Offline engine (no API key) on scripted conversations. **These are synthetic, written by the team, not real recordings**, and the tuned sets flatter the engine. Held-out set 2 is the fair number. Real speech will score lower.
+
+| Conversations | n | Fields correct | Name mismatches caught | False alarms | Completed to “हाँ” |
+|---|---|---|---|---|---|
+| Hindi (Devanagari) | 16 | 100.0% | 6/6 | 0 | 100% |
+| Hinglish (Latin script) | 12 | 100.0% | 6/6 | 0 | 100% |
+| Tamil | 12 | 100.0% | 3/3 | 0 | 100% |
+| All tuned sets | 40 | 100.0% | 15/15 | 0 | 100% |
+| Held-out set 1 (Hindi, used once to find a gap) | 16 | 100.0% | 6/6 | 0 | 100% |
+| **Held-out set 2 (Hindi, never used for tuning)** | 16 | 75.0% | 6/6 | 10 | 100% |
+
+Offline engine, 0.1 ms per turn on this machine. Held-out set 2 fields most often wrong: name (16), bank_account_name (16), guardian_name (16).
+
+On held-out set 2 the misses come from a filler word the offline extractor had never seen ("हाँ **बेटा**, सावित्री" became the name "बेटा सावित्री"). That fails safely: the guard raises a name-mismatch question and the read-back lets the citizen correct it, so nothing wrong reaches the portal unconfirmed. Free-form speech like this is what the Claude extractor is for.
+
+```bash
+python -m eval.run_eval
+```
 
 ## Known limitations
 

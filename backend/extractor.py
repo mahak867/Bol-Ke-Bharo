@@ -90,6 +90,10 @@ _HINDI_NUM = {"saath": 60, "sath": 60, "sattar": 70, "assi": 80, "nabbe": 90, "p
               "pachhattar": 75, "paisath": 65, "painsath": 65,
               "bees": 20, "tees": 30, "chalis": 40, "pachas": 50, "ek": 1, "do": 2, "teen": 3, "paanch": 5, "das": 10,
               "बीस": 20, "तीस": 30, "चालीस": 40, "पचास": 50, "एक": 1, "दो": 2, "तीन": 3, "पांच": 5, "पाँच": 5, "दस": 10,
+              "इकसठ": 61, "बासठ": 62, "तिरसठ": 63, "चौंसठ": 64, "छियासठ": 66, "सड़सठ": 67, "सड़सठ": 67,
+              "अड़सठ": 68, "अड़सठ": 68, "उनहत्तर": 69, "इकहत्तर": 71, "बहत्तर": 72, "तिहत्तर": 73, "चौहत्तर": 74,
+              "छिहत्तर": 76, "सतहत्तर": 77, "अठहत्तर": 78, "उन्यासी": 79, "उनासी": 79, "इक्यासी": 81, "बयासी": 82,
+              "तिरासी": 83, "चौरासी": 84, "पचासी": 85, "छियासी": 86, "सत्तासी": 87, "अट्ठासी": 88, "नवासी": 89,
               "साठ": 60, "सत्तर": 70, "अस्सी": 80, "नब्बे": 90, "पचपन": 55, "पैंसठ": 65, "पचहत्तर": 75}
 _FEMALE = {"mahila", "aurat", "female", "stree", "महिला", "औरत", "स्त्री", "பெண்", "பெண்ணு", "pen"}
 _MALE = {"purush", "aadmi", "male", "mard", "पुरुष", "आदमी", "मर्द", "ஆண்", "aan"}
@@ -154,6 +158,15 @@ class RuleExtractor:
                 value = "female" if set(low) & _FEMALE else "male" if set(low) & _MALE else None
             elif field["type"] == "bool" and consent:
                 value = "true" if consent == "yes" else "false"
+            elif field["type"] == "string" and field.get("pattern"):
+                # A fixed-format answer inside a sentence: try each word, then runs of joined words
+                # ("आख़िरी चार 9012", "SBIN 000 1234").
+                pattern = re.compile(field["pattern"])
+                runs = [re.sub(r"[\s-]", "", " ".join(toks[i:j])).upper() if field["key"] == "ifsc"
+                        else re.sub(r"[\s-]", "", " ".join(toks[i:j]))
+                        for i in range(len(toks)) for j in range(i + 1, len(toks) + 1)]
+                value = next((r for r in runs if pattern.fullmatch(r)), None)
+                conf = 0.85
             elif field["type"] == "string" and not field.get("pattern"):
                 words = [t for t in toks if t.lower() not in _FILLER and t.lower() not in YES]
                 if words and len(words) <= 5:
