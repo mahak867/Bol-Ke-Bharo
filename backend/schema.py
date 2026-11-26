@@ -21,6 +21,7 @@ def field_map(schema: dict) -> dict[str, dict]:
     return {f["key"]: f for f in schema["fields"]}
 
 
+_DEVANAGARI_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
 _YES = {"true", "yes", "haan", "han", "ha", "हाँ", "हां", "ji", "जी", "y", "1"}
 _NO = {"false", "no", "nahi", "nahin", "na", "नहीं", "ना", "n", "0"}
 
@@ -30,7 +31,7 @@ def coerce(field: dict, raw):
     if raw is None:
         raise ValueError("empty")
     t = field["type"]
-    s = str(raw).strip()
+    s = str(raw).strip().translate(_DEVANAGARI_DIGITS)
     if t == "int":
         digits = re.sub(r"[^\d]", "", s)
         if not digits:

@@ -1,0 +1,5 @@
+DRAFT: edit so every sentence is true for your team before submitting.
+
+We used Wispr Flow as our keyboard for the whole build. We dictated all three Round 1 submissions (idea, prompt and impact) in Wispr Flow, speaking in Hinglish, and then edited them. During the build we dictated our prompts to our AI coding assistant, our commit messages and the README. [Add one specific example: e.g. "We described the Ramvati / Ram Wati rejection case out loud and Flow turned it into the guard-rule spec."]
+
+Using Flow ourselves shaped the product. Speaking was faster than typing, but it also showed us what voice input gets wrong: names spelled differently, numbers heard as words, and filler words like "mera naam ... hai". That is why Bol Ke Bharo strips filler words, normalises spoken numbers ("तीस हजार" becomes 30000), shows the exact words each value came from, and never trusts a value without a spoken read-back. Wispr made the keyboard optional for us; we built the same thing for the people who fill India's forms for everyone else.

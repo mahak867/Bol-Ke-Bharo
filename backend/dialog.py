@@ -29,6 +29,8 @@ class Session:
         self.started = time.time()
         self.touched = time.time()
         self.say: str = ""
+        self.expecting: str | None = None         # field the last question asked for
+        self.open_failure: dict | None = None     # guard failure the last question asked about
 
     # ---------- applying input ----------
     def add_turn(self, speaker: str, text: str, extractor) -> None:
@@ -39,7 +41,12 @@ class Session:
         if mentions_secret(text):
             self.events.append({"t": time.time(), "type": "secret_warning"})
         self.transcript.append(f"{speaker.upper()}: {text}")
-        result = extractor.extract(self.schema, self.values, speaker, text, self.transcript[:-1])
+        if speaker == "citizen" and self._resolve_name_choice(text):
+            self.say = self.next_prompt()
+            self.transcript.append(f"ASSISTANT: {self.say}")
+            return
+        result = extractor.extract(self.schema, self.values, speaker, text, self.transcript[:-1],
+                                   expected=self.expecting)
 
         # Consent / confirmation answers from the citizen
         if speaker == "citizen" and result.consent:
@@ -76,6 +83,22 @@ class Session:
             self.consent = None
         self.say = self.next_prompt()
         self.transcript.append(f"ASSISTANT: {self.say}")
+
+    def _resolve_name_choice(self, text: str) -> bool:
+        """After 'Aadhaar says X, passbook says Y - which is right?', an answer naming X or Y sets both."""
+        f = self.open_failure
+        if not f or f["id"] != "name_match":
+            return False
+        a, b = f["fields"]
+        said = " ".join(text.lower().split())
+        candidates = sorted({self.values.get(a), self.values.get(b)} - {None}, key=len, reverse=True)
+        for name in candidates:
+            if " ".join(str(name).lower().split()) in said:
+                for k in (a, b):
+                    self.set_field(k, name, 1.0, text, source="voice")
+                self.open_failure = None
+                return True
+        return False
 
     def set_field(self, key, raw, confidence=1.0, evidence="", source="operator") -> bool:
         field = self.fields.get(key)
@@ -119,16 +142,21 @@ class Session:
         if self.phase == "done":
             return "धन्यवाद। आवेदन पोर्टल में भरने के लिए तैयार है।"
 
+        self.expecting, self.open_failure = None, None
         # 1. Rejection risks we haven't asked about with these values.
         for failure in guard.check(self.schema, self.values):
             snapshot = {k: self.values.get(k) for k in failure["fields"]}
             if self.asked_failures.get(failure["id"]) != snapshot:
                 self.asked_failures[failure["id"]] = snapshot
+                self.open_failure = failure
+                if len(failure["fields"]) == 1:
+                    self.expecting = failure["fields"][0]
                 return failure["message"]
 
         # 2. Missing required fields.
         missing = self.missing()
         if missing:
+            self.expecting = missing[0]
             return self.fields[missing[0]]["ask"]["hi"]
 
         # 3. Low-confidence values: confirm one at a time.

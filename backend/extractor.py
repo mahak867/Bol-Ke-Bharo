@@ -59,12 +59,14 @@ class ClaudeExtractor:
         import anthropic
         self.client = client or anthropic.Anthropic()
 
-    def extract(self, schema: dict, state: dict, speaker: str, segment: str, recent: list[str]) -> Extraction:
+    def extract(self, schema: dict, state: dict, speaker: str, segment: str, recent: list[str],
+                expected: str | None = None) -> Extraction:
         user = (
             f"Form schema:\n{_schema_for_prompt(schema)}\n\n"
             f"Current form state:\n{json.dumps(state, ensure_ascii=False)}\n\n"
             f"Recent conversation:\n" + "\n".join(recent[-6:]) + "\n\n"
-            f"New segment ({speaker.upper()}): {segment}"
+            + (f"The assistant's last question asked for: {expected}\n" if expected else "")
+            + f"New segment ({speaker.upper()}): {segment}"
         )
         response = self.client.beta.messages.parse(
             model=MODEL,
@@ -83,35 +85,92 @@ class ClaudeExtractor:
 
 
 _HINDI_NUM = {"saath": 60, "sath": 60, "sattar": 70, "assi": 80, "nabbe": 90, "pachpan": 55,
-              "pachhattar": 75, "paisath": 65, "painsath": 65}
-_YES_WORDS = re.compile(r"^\W*(haan|han|ha|ji haan|ji|yes|sahi hai|हाँ|हां|जी)\b", re.I)
-_NO_WORDS = re.compile(r"^\W*(nahi|nahin|na|no|galat|नहीं|ना|गलत)\b", re.I)
+              "pachhattar": 75, "paisath": 65, "painsath": 65,
+              "bees": 20, "tees": 30, "chalis": 40, "pachas": 50, "ek": 1, "do": 2, "teen": 3, "paanch": 5, "das": 10,
+              "बीस": 20, "तीस": 30, "चालीस": 40, "पचास": 50, "एक": 1, "दो": 2, "तीन": 3, "पांच": 5, "पाँच": 5, "दस": 10,
+              "साठ": 60, "सत्तर": 70, "अस्सी": 80, "नब्बे": 90, "पचपन": 55, "पैंसठ": 65, "पचहत्तर": 75}
+_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
+_PUNCT = "।,.?!:;\"'"
+_YES = {"haan", "han", "ha", "ji", "yes", "sahi", "theek", "हाँ", "हां", "हा", "जी", "सही", "ठीक", "बिल्कुल"}
+_NO = {"nahi", "nahin", "na", "no", "galat", "नहीं", "नही", "ना", "गलत", "ग़लत"}
+_FEMALE = {"mahila", "aurat", "female", "stree", "महिला", "औरत", "स्त्री"}
+_MALE = {"purush", "aadmi", "male", "mard", "पुरुष", "आदमी", "मर्द"}
+_MULT = {"hazaar": 1000, "hazar": 1000, "हज़ार": 1000, "हजार": 1000, "lakh": 100000, "लाख": 100000}
+# Words that frame an answer but are not part of it ("मेरा नाम ___ है").
+_FILLER = set("""mera meri mere naam hai hain ji main hoon hun mein me se ka ki ke ko par likha hua tha
+gaon gaon ka jila zila district village rehta rehti rehte aata aati pati pita pitaji father husband
+passbook bank aadhaar card ka wala wali haan
+मेरा मेरी मेरे नाम है हैं जी मैं हूँ हूं हु में से का की के को पर लिखा हुआ था गाँव गांव गाव जिला ज़िला जिले
+ज़िले जनपद मोहल्ला वार्ड रहता रहती रहते आता आती पति पिता पिताजी पासबुक बैंक आधार कार्ड वाला वाली हाँ हां""".split())
+
+
+def _tokens(text: str) -> list[str]:
+    return [t.strip(_PUNCT) for t in text.translate(_DIGITS).split() if t.strip(_PUNCT)]
+
+
+def _number(tokens: list[str]) -> int | None:
+    total, current = 0, None
+    for t in tokens:
+        low = t.lower()
+        if re.fullmatch(r"\d+", low):
+            current = int(low)
+        elif low in _HINDI_NUM:
+            current = _HINDI_NUM[low]
+        elif low in _MULT and current is not None:
+            total += current * _MULT[low]
+            current = None
+    if current is not None:
+        total += current
+    return total or None
 
 
 class RuleExtractor:
-    """Offline fallback: age, mobile, Aadhaar last 4, IFSC, yes/no. Good enough for UI tests only."""
+    """Offline fallback, no API key needed. Picks out numbers, IDs and yes/no anywhere, and
+    otherwise fills the field the assistant just asked for from the citizen's answer."""
 
-    def extract(self, schema: dict, state: dict, speaker: str, segment: str, recent: list[str]) -> Extraction:
+    def extract(self, schema: dict, state: dict, speaker: str, segment: str, recent: list[str],
+                expected: str | None = None) -> Extraction:
         ups: list[FieldUpdate] = []
-        low = segment.lower()
-        if m := re.search(r"(\d{2,3})\s*(saal|sal|years|varsh|साल|वर्ष)", low):
+        text = segment.translate(_DIGITS)
+        toks = _tokens(segment)
+        low = [t.lower() for t in toks]
+        if m := re.search(r"(\d{2,3})\s*(saal|sal|years|varsh|साल|वर्ष)", text.lower()):
             ups.append(FieldUpdate(key="age", value=m.group(1), confidence=0.9, evidence=m.group(0)))
         else:
-            for w, n in _HINDI_NUM.items():
-                if re.search(rf"\b{w}\s*(saal|sal)\b", low):
-                    ups.append(FieldUpdate(key="age", value=str(n), confidence=0.75, evidence=w))
-        if m := re.search(r"(?<!\d)([6-9]\d{9})(?!\d)", re.sub(r"[\s-]", "", segment)):
+            for i, t in enumerate(low[:-1]):
+                if t in _HINDI_NUM and low[i + 1] in ("saal", "sal", "साल", "वर्ष"):
+                    ups.append(FieldUpdate(key="age", value=str(_HINDI_NUM[t]), confidence=0.75, evidence=t))
+        if m := re.search(r"(?<!\d)([6-9]\d{9})(?!\d)", re.sub(r"[\s-]", "", text)):
             ups.append(FieldUpdate(key="mobile", value=m.group(1), confidence=0.9, evidence=m.group(1)))
-        if m := re.search(r"XXXX XXXX (\d{4})", segment):
+        if m := re.search(r"XXXX XXXX (\d{4})", text):
             ups.append(FieldUpdate(key="aadhaar_last4", value=m.group(1), confidence=0.95, evidence=m.group(0)))
-        if m := re.search(r"\b([A-Z]{4}0[A-Z0-9]{6})\b", segment.upper().replace(" ", "")):
+        if m := re.search(r"([A-Z]{4}0[A-Z0-9]{6})", text.upper().replace(" ", "")):
             ups.append(FieldUpdate(key="ifsc", value=m.group(1), confidence=0.85, evidence=m.group(1)))
+
         consent = None
-        if speaker == "citizen":
-            if _YES_WORDS.search(segment):
+        if speaker == "citizen" and low:
+            if low[0] in _YES:
                 consent = "yes"
-            elif _NO_WORDS.search(segment):
+            elif low[0] in _NO or any(t in _NO for t in low[:3]):
                 consent = "no"
+
+        field = next((f for f in schema["fields"] if f["key"] == expected), None)
+        if speaker == "citizen" and field and not any(u.key == expected for u in ups):
+            value, conf = None, 0.8
+            if field["type"] == "int":
+                n = _number(toks)
+                value = str(n) if n else None
+            elif field["type"] == "enum" and field["key"] == "gender":
+                value = "female" if set(low) & _FEMALE else "male" if set(low) & _MALE else None
+            elif field["type"] == "bool" and consent:
+                value = "true" if consent == "yes" else "false"
+            elif field["type"] == "string" and not field.get("pattern"):
+                words = [t for t in toks if t.lower() not in _FILLER]
+                if words and len(words) <= 5:
+                    value = " ".join(words)
+                    conf = 0.85 if len(words) <= 3 else 0.6
+            if value:
+                ups.append(FieldUpdate(key=expected, value=value, confidence=conf, evidence=segment))
         return Extraction(updates=ups, is_correction=False, consent=consent)
 
 

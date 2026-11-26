@@ -13,7 +13,7 @@ class Scripted:
         self.outputs = list(outputs)
         self.seen = []
 
-    def extract(self, schema, state, speaker, segment, recent):
+    def extract(self, schema, state, speaker, segment, recent, expected=None):
         self.seen.append(segment)
         return self.outputs.pop(0)
 
@@ -33,7 +33,7 @@ def test_name_mismatch_is_caught_then_fixed_then_consent():
     ex = Scripted([
         ups(**FULL),
         ups(bank_account_name="Ram Wati"),        # passbook spelling differs
-        ups(bank_account_name="Ramvati"),         # citizen confirms the Aadhaar spelling
+        # "Ramvati sahi hai" is resolved by the name-choice step, without the extractor
         ups(consent="yes"),                        # "haan" to the read-back
     ])
     s.add_turn("citizen", "…", ex)
@@ -142,3 +142,25 @@ def test_greeting_and_garbled_repeat():
     assert s.say.startswith("माफ़ कीजिए") and "नाम" in s.say
     s.add_turn("citizen", "hmm", ex)
     assert s.say.count("माफ़ कीजिए") == 1      # no stacking of apologies
+
+
+def test_full_spoken_conversation_offline_devanagari():
+    """What Chrome's hi-IN recogniser actually returns: Devanagari words, often with digits."""
+    s = SessionStore().create(load_schema("pension_up"))
+    ex = RuleExtractor()
+    for said in ["जी, मेरा नाम रामवती है", "पति का नाम श्याम लाल है", "मेरी उम्र ६८ साल है", "महिला",
+                 "बाराबंकी जिले में रहती हूँ", "फतेहपुर गाँव", "मेरा नंबर 98765 43210 है", "आधार 1234 5678 9012",
+                 "पासबुक पर राम वती लिखा है"]:
+        s.add_turn("citizen", said, ex)
+    assert s.values["name"] == "रामवती" and s.values["bank_account_name"] == "राम वती"
+    assert "कौन सा सही" in s.say                       # mismatch caught
+    s.add_turn("citizen", "रामवती सही है", ex)
+    assert s.values["bank_account_name"] == "रामवती"
+    for said in ["SBIN 0001234", "तीस हजार", "हाँ, आधार कार्ड है"]:
+        s.add_turn("citizen", said, ex)
+    assert s.values["annual_income"] == 30000 and s.values["has_age_proof"] is True
+    assert s.values["guardian_name"] == "श्याम लाल" and s.values["district"] == "बाराबंकी"
+    assert s.phase == "readback", s.say
+    s.add_turn("citizen", "हाँ जी, सब सही है", ex)
+    assert s.phase == "done"
+    assert s.export()["values"]["aadhaar_last4"] == "9012"

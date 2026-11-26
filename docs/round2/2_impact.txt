@@ -1,0 +1,9 @@
+Who benefits: About 3 crore people receive central pensions under the National Social Assistance Programme (about 2.2 crore old-age pensioners alone, per a November 2025 government reply in Parliament), and many of them depend on intermediaries to apply. India has about 5.67 lakh functional Common Service Centres (MeitY, October 2025), plus bank mitras and ASHA workers. Bol Ke Bharo helps both sides of the counter.
+
+What changes: The operator and citizen simply talk, in Hindi or Hinglish. The form fills itself as they speak. Name mismatches, age below 60 and missing age proof are caught at the counter, while the citizen and her documents are still there, and fixed with one spoken question. She hears every detail read back in Hindi and says "haan" before anything can be exported. Full Aadhaar numbers are masked to the last 4 digits, OTPs are never captured, and a person always does the final submit. For the citizen this means one visit instead of several, and knowing what was filed in her name. For the operator it means less typing, fewer rejections and more citizens served per day.
+
+It scales by adding forms, not people: each scheme (scholarship, ration card, crop insurance) is one JSON schema file, delivered through operators who already exist in every block.
+
+How we'll know: time per application by stopwatch (target 40% faster), field accuracy on recorded test conversations (target 85% before read-back), and rejection-causing errors caught before submission.
+
+Main risk: speech recognition is weakest for elderly, dialect speakers in noisy rooms. That is why nothing is exported without the full spoken read-back and the citizen's "haan", and why the operator can correct any field with a tap.
