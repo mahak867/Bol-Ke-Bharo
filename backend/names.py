@@ -75,18 +75,56 @@ def _word_to_latin(word: str) -> str:
 
 
 _DEVANAGARI = re.compile("[\u0900-\u097F]")
+_TAMIL = re.compile("[\u0B80-\u0BFF]")
+
+# --- Tamil -> Latin, as Tamil names are usually spelled in English ---------------------------------
+_TA_CONS = {"க": "k", "ங": "ng", "ச": "s", "ஞ": "nj", "ட": "t", "ண": "n", "த": "th", "ந": "n", "ப": "p",
+            "ம": "m", "ய": "y", "ர": "r", "ல": "l", "வ": "v", "ழ": "zh", "ள": "l", "ற": "r", "ன": "n",
+            "ஜ": "j", "ஷ": "sh", "ஸ": "s", "ஹ": "h"}
+_TA_VOWELS = {"அ": "a", "ஆ": "a", "இ": "i", "ஈ": "i", "உ": "u", "ஊ": "u", "எ": "e", "ஏ": "e", "ஐ": "ai",
+              "ஒ": "o", "ஓ": "o", "ஔ": "au"}
+_TA_SIGNS = {"ா": "a", "ி": "i", "ீ": "i", "ு": "u", "ூ": "u", "ெ": "e", "ே": "e", "ை": "ai", "ொ": "o",
+             "ோ": "o", "ௌ": "au", "்": ""}
+_TA_VOICED = {"k": "g", "t": "d", "p": "b"}       # between vowels / after a nasal (முருகன் -> Murugan)
+_TA_NASAL = {"ங", "ஞ", "ண", "ந", "ம", "ன"}
+
+
+def _tamil_word_to_latin(word: str) -> str:
+    sylls = []                                     # [letter, consonant, vowel]
+    for ch in word:
+        if ch in _TA_CONS:
+            sylls.append([ch, _TA_CONS[ch], "a"])
+        elif ch in _TA_SIGNS and sylls:
+            sylls[-1][2] = _TA_SIGNS[ch]
+        elif ch in _TA_VOWELS:
+            sylls.append([ch, "", _TA_VOWELS[ch]])
+    out = []
+    for i, (letter, cons, vowel) in enumerate(sylls):
+        prev = sylls[i - 1] if i else None
+        if prev and vowel and cons in _TA_VOICED and (prev[2] or prev[0] in _TA_NASAL):
+            cons = _TA_VOICED[cons]
+        if letter == "ச" and prev and not prev[2]:  # after a consonant: ட்ச -> "tch"
+            cons = "ch"
+        out.append(cons + vowel)
+    return "".join(out)
 
 
 def has_devanagari(text) -> bool:
     return bool(_DEVANAGARI.search(str(text)))
 
 
+def needs_romanising(text) -> bool:
+    """Written in an Indian script we can romanise (Devanagari or Tamil)."""
+    return bool(_DEVANAGARI.search(str(text)) or _TAMIL.search(str(text)))
+
+
 @lru_cache(maxsize=512)
 def to_latin(name: str) -> str:
-    """'रामवती' -> 'Ramvati', 'श्याम लाल' -> 'Shyam Lal'. Latin input is only tidied (case, spaces)."""
+    """'रामवती' -> 'Ramvati', 'முருகன்' -> 'Murugan'. Latin input is only tidied (case, spaces)."""
     words = []
     for w in str(name).split():
-        latin = _word_to_latin(w) if has_devanagari(w) else w
+        latin = (_word_to_latin(w) if has_devanagari(w) else
+                 _tamil_word_to_latin(w) if _TAMIL.search(w) else w)
         words.append(latin[:1].upper() + latin[1:].lower())
     return " ".join(words)
 
@@ -94,6 +132,7 @@ def to_latin(name: str) -> str:
 # --- Sound-alike key ---------------------------------------------------------------------------------
 _KEY_RULES = [(re.compile(p), r) for p, r in [
     (r"[^a-z]", ""),            # spaces, dots, hyphens
+    (r"tch", "ksh"),            # Tamil writes the "ksh" of Lakshmi as ட்ச: Latchumi
     (r"w", "v"), (r"x", "ks"), (r"ph", "f"), (r"sh", "s"), (r"z", "j"), (r"q", "k"),
     (r"ee|ii|y$", "i"), (r"oo|uu", "u"), (r"aa", "a"),
     (r"(.)\1+", r"\1"),         # doubled letters

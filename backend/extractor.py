@@ -10,7 +10,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from .lexicon import DIGITS, answer, tokens
+from .lexicon import DIGITS, YES, answer, tokens
 
 MODEL = os.environ.get("BKB_MODEL", "claude-sonnet-5-5")
 
@@ -91,14 +91,15 @@ _HINDI_NUM = {"saath": 60, "sath": 60, "sattar": 70, "assi": 80, "nabbe": 90, "p
               "bees": 20, "tees": 30, "chalis": 40, "pachas": 50, "ek": 1, "do": 2, "teen": 3, "paanch": 5, "das": 10,
               "बीस": 20, "तीस": 30, "चालीस": 40, "पचास": 50, "एक": 1, "दो": 2, "तीन": 3, "पांच": 5, "पाँच": 5, "दस": 10,
               "साठ": 60, "सत्तर": 70, "अस्सी": 80, "नब्बे": 90, "पचपन": 55, "पैंसठ": 65, "पचहत्तर": 75}
-_FEMALE = {"mahila", "aurat", "female", "stree", "महिला", "औरत", "स्त्री"}
-_MALE = {"purush", "aadmi", "male", "mard", "पुरुष", "आदमी", "मर्द"}
+_FEMALE = {"mahila", "aurat", "female", "stree", "महिला", "औरत", "स्त्री", "பெண்", "பெண்ணு", "pen"}
+_MALE = {"purush", "aadmi", "male", "mard", "पुरुष", "आदमी", "मर्द", "ஆண்", "aan"}
 _MULT = {"hazaar": 1000, "hazar": 1000, "हज़ार": 1000, "हजार": 1000, "lakh": 100000, "लाख": 100000}
 # Words that frame an answer but are not part of it ("मेरा नाम ___ है").
 _FILLER = set("""mera meri mere naam hai hain ji main hoon hun mein me se ka ki ke ko par likha hua tha
 gaon gaon ka jila zila district village rehta rehti rehte aata aati pati pita pitaji father husband
 passbook bank aadhaar card ka wala wali haan
 मेरा मेरी मेरे नाम है हैं जी मैं हूँ हूं हु में से का की के को पर लिखा हुआ था गाँव गांव गाव जिला ज़िला जिले
+என் என்னுடைய என்னோட பெயர் பேரு வயது வருடம் ஆண்டு மாவட்டம் மாவட்டத்தில் கிராமம் கிராமத்தில் ஊர் ஊரில் தெரு எண் நம்பர் கணவர் கணவரின் தந்தை அப்பா பாஸ்புக் பாஸ்புக்கில் வங்கி வங்கியில் உள்ளது இருக்கு இருக்கிறது நான் வசிக்கிறேன் இருக்கேன் ஆதார் மறைந்த அது இது போட்டிருக்கு எழுதியிருக்கு ஆகுது
 ज़िले जनपद मोहल्ला स्वर्गीय स्व॰ स्व. स्वर्गवासी थी थे late swargiya वार्ड रहता रहती रहते आता आती पति पिता पिताजी पासबुक बैंक आधार कार्ड वाला वाली हाँ हां""".split())
 
 
@@ -128,7 +129,7 @@ class RuleExtractor:
         text = segment.translate(DIGITS)
         toks = tokens(segment)
         low = [t.lower() for t in toks]
-        if m := re.search(r"(\d{2,3})\s*(saal|sal|years|varsh|साल|वर्ष)", text.lower()):
+        if m := re.search(r"(\d{2,3})\s*(saal|sal|years|varsh|साल|वर्ष|வயது|வருடம்)", text.lower()):
             ups.append(FieldUpdate(key="age", value=m.group(1), confidence=0.9, evidence=m.group(0)))
         else:
             for i, t in enumerate(low[:-1]):
@@ -154,7 +155,7 @@ class RuleExtractor:
             elif field["type"] == "bool" and consent:
                 value = "true" if consent == "yes" else "false"
             elif field["type"] == "string" and not field.get("pattern"):
-                words = [t for t in toks if t.lower() not in _FILLER]
+                words = [t for t in toks if t.lower() not in _FILLER and t.lower() not in YES]
                 if words and len(words) <= 5:
                     value = " ".join(words)
                     conf = 0.85 if len(words) <= 3 else 0.6

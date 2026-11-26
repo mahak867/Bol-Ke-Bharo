@@ -6,7 +6,7 @@
 <title>Bol Ke Bharo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700;800&family=Noto+Sans+Tamil:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* Tokens: a CSC counter. Form paper, fountain-pen ink, a rubber stamp, haldi for "listening",
    sindoor for rejection risk, leaf green for consent. */
@@ -24,7 +24,7 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--paper); color: var(--ink);
-  font: 400 17px/1.5 "Mukta", "Noto Sans Devanagari", system-ui, sans-serif; }
+  font: 400 17px/1.5 "Mukta", "Noto Sans Devanagari", "Noto Sans Tamil", system-ui, sans-serif; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; border-radius: 10px; border: 1.5px solid var(--rule); background: var(--sheet); padding: 10px 16px; font-weight: 500; }
@@ -34,6 +34,10 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 header { display: flex; align-items: baseline; gap: 18px; padding: 14px 24px; border-bottom: 1.5px solid var(--rule); flex-wrap: wrap; }
 .brand { font-weight: 800; font-size: 22px; letter-spacing: -.01em; }
 .brand small { font-weight: 500; color: var(--ink-2); font-size: 17px; margin-left: 6px; }
+.langs { display: flex; border: 1.5px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.langs button { border: 0; border-radius: 0; padding: 4px 12px; background: transparent; }
+.langs button[aria-pressed="true"] { background: var(--stamp); color: var(--stamp-ink); }
+.mic b { display: block; }
 .formname { color: var(--ink-2); border: 0; background: transparent; font-size: 17px; padding: 2px 0; cursor: pointer; }
 .clock { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 22px; }
 .clock small { display: block; font-weight: 400; font-size: 13px; color: var(--ink-2); text-align: right; }
@@ -122,6 +126,9 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
 <header>
   <div class="brand">Bol Ke Bharo <small>बोल के भरो</small></div>
   <select class="formname" id="formPick" aria-label="Form to fill"></select>
+  <div class="langs" id="langPick" role="group" aria-label="Language">
+    <button data-lang="hi" aria-pressed="true">हिन्दी</button><button data-lang="ta" aria-pressed="false">தமிழ்</button>
+  </div>
   <div class="clock"><span id="timer">0:00</span><small id="engine"></small></div>
   <button id="newBtn">New application</button>
 </header>
@@ -135,11 +142,11 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
       </div>
     </div>
     <div class="controls">
-      <button class="mic cit" id="micCit">नागरिक बोल रही हैं<span>Citizen speaks</span></button>
-      <button class="mic op" id="micOp">ऑपरेटर बोल रहे हैं<span>Operator speaks</span></button>
+      <button class="mic cit" id="micCit"><b data-t="citizen"></b><span>Citizen speaks</span></button>
+      <button class="mic op" id="micOp"><b data-t="operator"></b><span>Operator speaks</span></button>
     </div>
     <label class="hf"><input type="checkbox" id="hf" checked> Hands-free: listens by itself after every question</label>
-    <div class="chips">Say <b>“दोबारा”</b> to hear it again, <b>“रुको”</b> to pause, or <b>“नहीं, …”</b> to correct.</div>
+    <div class="chips" data-t="chips"></div>
     <div class="interim" id="interim"></div>
     <form class="typed" id="typed">
       <select id="who" aria-label="Speaker"><option value="citizen">Citizen</option><option value="operator">Operator</option></select>
@@ -150,7 +157,7 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
     <div class="log" id="log" aria-label="Conversation so far"></div>
   </section>
   <section class="sheet" aria-label="Application">
-    <h2>आवेदन पत्र</h2>
+    <h2 data-t="sheet"></h2>
     <div class="sub" id="sheetSub"></div>
     <div class="progress"><i id="bar" style="width:0"></i></div>
     <div class="status" id="status"></div>
@@ -175,11 +182,27 @@ async function api(path, opts = {}) {
 }
 
 let handsFree = true, noInput = 0, ttsTimer = null;
-const MODES = { idle: "तैयार", speaking: "बोल रहे हैं", listening: "सुन रहे हैं…", done: "नागरिक ने पुष्टि की" };
+// Interface words per language. Everything the app says aloud comes from the server.
+const UI = {
+  hi: { idle: "तैयार", speaking: "बोल रहे हैं", listening: "सुन रहे हैं…", done: "नागरिक ने पुष्टि की",
+        listeningOp: "ऑपरेटर को सुन रहे हैं…", citizen: "नागरिक बोल रही हैं", operator: "ऑपरेटर बोल रहे हैं",
+        sheet: "आवेदन पत्र", chips: 'Say <b>“दोबारा”</b> to hear it again, <b>“रुको”</b> to pause, or <b>“गाँव बदलो”</b> to change one answer.' },
+  ta: { idle: "தயார்", speaking: "பேசுகிறது", listening: "கேட்கிறது…", done: "குடிமகள் உறுதிப்படுத்தினார்",
+        listeningOp: "ஆபரேட்டரைக் கேட்கிறது…", citizen: "குடிமகள் பேசுகிறார்", operator: "ஆபரேட்டர் பேசுகிறார்",
+        sheet: "விண்ணப்பப் படிவம்", chips: 'Say <b>“மீண்டும்”</b> to hear it again, <b>“நிறுத்து”</b> to pause, or <b>“ஊர் மாற்று”</b> to change one answer.' },
+};
+let lang = "hi";
+const ui = () => UI[lang];
+const SPEECH_LANG = { hi: "hi-IN", ta: "ta-IN" };
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach((el) => { el.innerHTML = ui()[el.dataset.t]; });
+  document.querySelectorAll("#langPick button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.lang === lang));
+}
 function setMode(m) {
   if (state && state.phase === "done") m = "done";
   document.body.dataset.mode = m;
-  $("mode").textContent = m === "listening" && liveSpeaker === "operator" ? "ऑपरेटर को सुन रहे हैं…" : MODES[m];
+  $("mode").textContent = m === "listening" && liveSpeaker === "operator" ? ui().listeningOp : ui()[m];
 }
 function speak(text, then) {
   stopListening();
@@ -187,8 +210,8 @@ function speak(text, then) {
   if (!("speechSynthesis" in window) || !text) { then && then(); return; }
   speechSynthesis.cancel(); clearTimeout(ttsTimer);
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "hi-IN"; u.rate = 0.85;
-  const v = speechSynthesis.getVoices().find((v) => v.lang.startsWith("hi"));
+  u.lang = SPEECH_LANG[lang]; u.rate = 0.85;
+  const v = speechSynthesis.getVoices().find((v) => v.lang.startsWith(lang));
   if (v) u.voice = v;
   let done = false;
   const finish = () => { if (done) return; done = true; clearTimeout(ttsTimer); setMode("idle"); setTimeout(() => then && then(), 250); };
@@ -240,7 +263,7 @@ function render(s) {
     const meta = has ? `<span class="meta">${f.source === "operator" ? "Typed by operator" : `Heard “${esc(f.evidence)}”`}${
       f.low ? ", needs a check" : ""}${f.corrected ? ", corrected" : ""}</span>` : "";
     return `<tr class="${cls}${fresh}"><td class="n">${i + 1}</td>
-      <td class="label">${esc(f.label.hi)}<small>${esc(f.label.en)}</small></td>
+      <td class="label">${esc(f.label[lang] || f.label.hi)}<small>${esc(f.label.en)}</small></td>
       <td class="val" data-key="${f.key}" title="Tap to correct">${has ? esc(f.value) : "—"}${
         f.latin ? `<span class="latin">Portal: ${esc(f.latin)}</span>` : ""}${meta}</td></tr>`;
   }).join("");
@@ -258,11 +281,13 @@ function esc(x) { return String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 async function newSession() {
   const info = await api("/api/info");
   $("engine").textContent = info.extractor === "RuleExtractor" ? "time taken, offline mode" : "time taken, with Claude";
-  if (!$("formPick").options.length)
-    $("formPick").innerHTML = info.forms.map((f) => `<option value="${f.id}">${esc(f.title.hi)}</option>`).join("");
+  const picked = $("formPick").value;
+  $("formPick").innerHTML = info.forms.map((f) => `<option value="${f.id}">${esc(f.title[lang] || f.title.hi)}</option>`).join("");
+  if (picked) $("formPick").value = picked;
+  applyLang();
   const form = info.forms.find((f) => f.id === $("formPick").value);
   $("sheetSub").textContent = `${form.title.en}, filled from the conversation`;
-  const s = await api("/api/sessions", { method: "POST", body: JSON.stringify({ form_id: form.id }) });
+  const s = await api("/api/sessions", { method: "POST", body: JSON.stringify({ form_id: form.id, lang }) });
   state = null; events = []; $("events").innerHTML = ""; render(s);
   timerStart = Date.now(); clearInterval(timerHandle);
   timerHandle = setInterval(() => {
@@ -286,8 +311,8 @@ async function sendTurn(speaker, text) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, liveSpeaker = null;
 if (!SR) $("micNote").textContent = "This browser has no speech recognition. Use Chrome, or type below.";
-const REPEAT = /^(दोबारा|दुबारा|फिर से|फिरसे|क्या कहा|dobara|phir se|repeat)/i;
-const PAUSE = /^(रुको|रुकिए|ruko|stop|बस)/i;
+const REPEAT = /^(दोबारा|दुबारा|फिर से|फिरसे|क्या कहा|dobara|phir se|repeat|மீண்டும்|திரும்ப|என்ன சொன்னீங்க)/i;
+const PAUSE = /^(रुको|रुकिए|ruko|stop|बस|நிறுத்து|நில்லுங்க|போதும்)/i;
 
 function stopListening() {
   if (rec) { const r = rec; rec = null; r.onend = null; try { r.abort(); } catch (e) {} }
@@ -300,7 +325,7 @@ function listen(speaker, auto) {
   if (!SR || !state) return;
   stopListening();
   rec = new SR(); liveSpeaker = speaker;
-  rec.lang = "hi-IN"; rec.interimResults = true; rec.continuous = false;
+  rec.lang = SPEECH_LANG[lang]; rec.interimResults = true; rec.continuous = false;
   const btn = speaker === "operator" ? $("micOp") : $("micCit");
   btn.classList.add("live");
   setMode("listening");
@@ -326,7 +351,7 @@ function listen(speaker, auto) {
     // No input: retry quietly once, then re-ask once, then pause and wait for a tap.
     noInput += 1;
     if (noInput === 1) listen("citizen", true);
-    else if (noInput === 2) speak("क्या आप मुझे सुन पा रहे हैं? " + state.say, afterSpeaking);
+    else if (noInput === 2) speak(state.can_you_hear + " " + state.say, afterSpeaking);
     else $("micNote").textContent = "Paused after no answer. Tap “नागरिक बोल रही हैं” to continue.";
   };
   try { rec.start(); } catch (e) {}
@@ -348,6 +373,8 @@ $("hf").onchange = (e) => { handsFree = e.target.checked; if (!handsFree) stopLi
 $("typed").onsubmit = (e) => { e.preventDefault(); sendTurn($("who").value, $("text").value); $("text").value = ""; };
 $("newBtn").onclick = newSession;
 $("formPick").onchange = newSession;
+$("langPick").onclick = (e) => { const b = e.target.closest("button"); if (!b || b.dataset.lang === lang) return;
+  lang = b.dataset.lang; speechSynthesis.cancel(); newSession(); };
 $("speakBtn").onclick = () => state && speak(state.say, afterSpeaking);
 $("form").onclick = async (e) => {
   const td = e.target.closest("td.val"); if (!td) return;

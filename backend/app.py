@@ -20,6 +20,7 @@ extractor = make_extractor()
 
 class NewSession(BaseModel):
     form_id: str = "pension_up"
+    lang: str = "hi"
 
 
 class Turn(BaseModel):
@@ -51,7 +52,7 @@ def create_session(body: NewSession):
         schema = load_schema(body.form_id)
     except (ValueError, FileNotFoundError):
         raise HTTPException(404, "unknown form")
-    return store.create(schema).public_state()
+    return store.create(schema, body.lang).public_state()
 
 
 @app.post("/api/sessions/{sid}/turn")

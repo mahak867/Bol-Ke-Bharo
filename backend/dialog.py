@@ -3,21 +3,21 @@ import time
 import uuid
 
 from . import guard, names
-from .lexicon import answer, tokens
+from .lexicon import LANGS, PHRASES, answer, pick, tokens
 from .privacy import mask_aadhaar, mask_for_display, mentions_secret
 from .schema import coerce, field_map
 
 LOW_CONFIDENCE = 0.7
 SESSION_TTL_SECONDS = 30 * 60
 
-BOOL_HI = {True: "हाँ", False: "नहीं"}
-GENDER_HI = {"female": "महिला", "male": "पुरुष", "other": "अन्य"}
 
 
 class Session:
-    def __init__(self, schema: dict):
+    def __init__(self, schema: dict, lang: str = "hi"):
         self.id = uuid.uuid4().hex
         self.schema = schema
+        self.lang = lang if lang in LANGS else "hi"
+        self.phrases = PHRASES[self.lang]
         self.fields = field_map(schema)
         self.values: dict = {}
         self.meta: dict = {}          # key -> {confidence, evidence, corrected}
@@ -50,7 +50,7 @@ class Session:
             if self.phase != "collect":
                 self.phase, self.consent = "collect", None
             self.expecting, self.open_failure, self.pending_confirm = key, None, None
-            self.say = "ठीक है, फिर से बताइए। " + self.fields[key]["ask"]["hi"]
+            self.say = self.phrases["again"] + " " + self.t(self.fields[key]["ask"])
             self.transcript.append(f"ASSISTANT: {self.say}")
             return
         if speaker == "citizen" and self._resolve_name_choice(text):
@@ -77,7 +77,7 @@ class Session:
 
         # Nothing usable from the citizen (noise, garbled speech): repeat the question.
         if speaker == "citizen" and not result.updates and not result.consent:
-            sorry = self.schema.get("not_heard", {}).get("hi", "")
+            sorry = self.t(self.schema["not_heard"]) if "not_heard" in self.schema else ""
             last = self.say[len(sorry):].strip() if sorry and self.say.startswith(sorry) else self.say
             self.say = f"{sorry} {last}".strip()
             self.transcript.append(f"ASSISTANT: {self.say}")
@@ -156,18 +156,21 @@ class Session:
         return ok
 
     # ---------- deciding what to say ----------
+    def t(self, texts: dict) -> str:
+        return pick(texts, self.lang)
+
     def display(self, key) -> str:
         v = self.values[key]
         if isinstance(v, bool):
-            return BOOL_HI[v]
+            return self.phrases["yes" if v else "no"]
         if key == "gender":
-            return GENDER_HI.get(v, v)
+            return self.phrases.get(v, v)
         return mask_for_display(self.fields[key], v)
 
     def latin(self, key):
         """Portal spelling of a Hindi-script value, for fields the schema marks portal_script=latin."""
         v = self.values.get(key)
-        if self.fields[key].get("portal_script") == "latin" and names.has_devanagari(v):
+        if self.fields[key].get("portal_script") == "latin" and names.needs_romanising(v):
             return names.to_latin(v)
         return None
 
@@ -184,7 +187,7 @@ class Session:
         """Guard result for the current values, computed once per change."""
         snapshot = tuple(sorted((k, str(v)) for k, v in self.values.items()))
         if getattr(self, "_warnings_for", None) != snapshot:
-            self._warnings_for, self._warnings = snapshot, guard.check(self.schema, self.values)
+            self._warnings_for, self._warnings = snapshot, guard.check(self.schema, self.values, self.lang)
         return self._warnings
 
     def missing(self) -> list[str]:
@@ -192,7 +195,7 @@ class Session:
 
     def next_prompt(self) -> str:
         if self.phase == "done":
-            return "धन्यवाद। आवेदन पोर्टल में भरने के लिए तैयार है।"
+            return self.phrases["thanks"]
 
         self.expecting, self.open_failure = None, None
         # 1. Rejection risks we haven't asked about with these values.
@@ -209,25 +212,27 @@ class Session:
         missing = self.missing()
         if missing:
             self.expecting = missing[0]
-            return self.fields[missing[0]]["ask"]["hi"]
+            return self.t(self.fields[missing[0]]["ask"])
 
         # 3. Low-confidence values: confirm one at a time.
         for key in self.values:
             if self.meta[key]["confidence"] < LOW_CONFIDENCE:
                 self.pending_confirm = key
-                return f"मैंने सुना: {self.spoken(key)}। क्या यह सही है?"
+                return self.phrases["heard"].format(value=self.spoken(key))
 
         # 4. Everything filled: read back for consent.
         self.phase = "readback"
-        lines = [self.fields[f["key"]]["readback"]["hi"].format(value=self.spoken(f["key"]))
+        lines = [self.t(self.fields[f["key"]]["readback"]).format(value=self.spoken(f["key"]))
                  for f in self.schema["fields"] if f["key"] in self.values]
-        return " ".join([self.schema["done"]["hi"], *lines, self.schema["confirm"]["hi"]])
+        return " ".join([self.t(self.schema["done"]), *lines, self.t(self.schema["confirm"])])
 
     # ---------- output ----------
     def public_state(self) -> dict:
         return {
             "session_id": self.id,
             "form_id": self.schema["form_id"],
+            "lang": self.lang,
+            "can_you_hear": self.phrases["can_you_hear"],
             "phase": self.phase,
             "say": self.say,
             "fields": [
@@ -264,10 +269,10 @@ class SessionStore:
         for sid in [s for s, v in self._sessions.items() if now - v.touched > SESSION_TTL_SECONDS]:
             del self._sessions[sid]
 
-    def create(self, schema: dict) -> Session:
+    def create(self, schema: dict, lang: str = "hi") -> Session:
         self.purge()
-        s = Session(schema)
-        greeting = schema.get("greeting", {}).get("hi", "")
+        s = Session(schema, lang)
+        greeting = s.t(schema["greeting"]) if "greeting" in schema else ""
         s.say = f"{greeting} {s.next_prompt()}".strip()
         s.transcript.append(f"ASSISTANT: {s.say}")
         self._sessions[s.id] = s

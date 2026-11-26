@@ -178,6 +178,7 @@ def test_compare_verdicts():
     assert names.compare("रामवती", "Ramvati")["verdict"] == "same"          # script only
     assert names.compare("Ramvati", "Ram Wati")["verdict"] == "spelling"    # rejection risk
     assert names.compare("Laxmi", "लक्ष्मी")["verdict"] == "spelling"
+    assert names.compare("லட்சுமி", "Lakshmi")["verdict"] == "spelling"   # Tamil vs Hindi spelling
     assert names.compare("Ramvati", "Sunita")["verdict"] == "different"     # wrong account?
     assert names.mentions("राम वती सही है", "Ramvati") == "Ramvati"
 
@@ -260,3 +261,20 @@ def test_second_form_is_only_a_schema_file():
         s.add_turn("citizen", said, ex)
     assert s.values["late_husband_name"] == "रमेश" and s.values["has_death_certificate"] is False
     assert "मृत्यु प्रमाण पत्र के बिना" in s.say                       # widow-specific rule
+
+
+def test_tamil_conversation_and_romanisation():
+    assert [names.to_latin(n) for n in ["முருகன்", "லட்சுமி", "பாண்டியன்", "செல்வி"]] == \
+        ["Murugan", "Latchumi", "Pandiyan", "Selvi"]
+    s = SessionStore().create(load_schema("pension_up"), "ta")
+    assert s.say.startswith("வணக்கம்")
+    ex = RuleExtractor()
+    for said in ["ஆம், என் பெயர் செல்வி", "கணவர் பெயர் முருகன்", "என் வயது 67", "பெண்", "மதுரை மாவட்டம்",
+                 "மேலூர் கிராமம்", "என் நம்பர் 98765 43210", "ஆதார் 1234 5678 9012", "பாஸ்புக்கில் செல்வி",
+                 "SBIN 0001234", "30000", "ஆம், ஆதார் இருக்கு"]:
+        s.add_turn("citizen", said, ex)
+    assert s.values["name"] == "செல்வி" and s.values["gender"] == "female"
+    assert s.phase == "readback" and "எல்லாம் சரியா" in s.say
+    s.add_turn("citizen", "ஆம், எல்லாம் சரி", ex)
+    out = s.export()["portal_values"]
+    assert out["name"] == "Selvi" and out["guardian_name"] == "Murugan" and out["village"] == "Melur"
