@@ -21,7 +21,14 @@ const LINES = [
   ["SBIN 0001234", "SBIN 0001234"],
   ["तीस हजार", "Thirty thousand"],
   ["हाँ, आधार कार्ड है", "Yes, I have my Aadhaar card"],
+  ["गाँव बदलो", "Change the village (voice edit, by the operator)", "🧑‍💼 Operator:"],
+  ["फतेहपुर गाँव", "Fatehpur village"],
   ["हाँ जी, सब सही है", "Yes, everything is correct"],
+];
+const TAMIL = [
+  ["ஆம், என் பெயர் செல்வி", "Yes, my name is Selvi"],
+  ["கணவர் பெயர் முருகன்", "My husband's name is Murugan"],
+  ["என் வயது 67", "I am 67"],
 ];
 
 const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURIComponent(`<!doctype html><html><body style="margin:0;height:100vh;display:flex;flex-direction:column;justify-content:center;padding:0 90px;background:#15140f;color:#f1ede4;font:22px/1.5 system-ui,sans-serif">
@@ -55,12 +62,12 @@ const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURI
       start() { setTimeout(() => {
         const next = queue.shift();
         if (next === undefined) { this.onend && this.onend(); return; }
-        const [hi, en] = next;
+        const [hi, en, who] = next;
         if (!hi) { show('🎙', '(silence…)', 'No answer: the app will retry, then re-ask'); setTimeout(() => this.onend && this.onend(), 2200); return; }
-        show('🗣 Citizen:', hi, en);
+        show(who || '🗣 Citizen:', hi, en);
         setTimeout(() => { this.onresult && this.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: hi }], { isFinal: true })] });
-                           this.onend && this.onend(); }, 1800);
-      }, 1300); }
+                           this.onend && this.onend(); }, 1500);
+      }, 1000); }
       abort() {} stop() {}
     }
     for (const k of ['SpeechRecognition', 'webkitSpeechRecognition'])
@@ -68,6 +75,7 @@ const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURI
     speechSynthesis.speak = (u) => { show('🔊 App:', u.text.length > 150 ? u.text.slice(0, 150) + '…' : u.text, '');
       setTimeout(() => u.onend && u.onend(), Math.min(1400 + u.text.length * 40, 7500)); };
     speechSynthesis.cancel = () => {};
+    window.__more = (lines) => queue.splice(0, queue.length, ...lines);
   }, LINES);
 
   await page.goto('http://localhost:8000/');
@@ -76,9 +84,20 @@ const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURI
   await page.waitForTimeout(1500);
   await page.waitForFunction(() => document.querySelector('#status').textContent.includes('confirmed'), null, { timeout: 180000 });
   await page.waitForTimeout(2500);
-  await page.click('#exportBtn');
-  await page.evaluate(() => document.querySelector('#exportOut').scrollIntoView({ behavior: 'smooth' }));
-  await page.waitForTimeout(5000);
+  // Last mile: the practice portal types the confirmed application in (same tab, for the recording).
+  const sid = await page.evaluate(() => state.session_id);
+  await page.goto(`http://localhost:8000/web/portal.html?session=${sid}`);
+  await page.waitForFunction(() => document.getElementById('status').textContent.includes('fields filled'), null, { timeout: 60000 });
+  await page.waitForTimeout(3500);
+
+  // Same app in Tamil.
+  await page.goto('http://localhost:8000/');
+  await page.evaluate((t) => window.__more(t), TAMIL);
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { stopListening(); });
+  await page.click('#langPick button[data-lang="ta"]');
+  await page.waitForFunction(() => document.querySelectorAll('#form tr:not(.empty)').length >= 3, null, { timeout: 60000 });
+  await page.waitForTimeout(2500);
 
   await page.goto(card("Conversation in. Verified application out.", [
     "🎙 Hands-free: listens after every question, retries on silence, “दोबारा” and “रुको” voice commands",
@@ -86,7 +105,8 @@ const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURI
     "🔤 Names matched across Hindi and English script: रामवती = Ramvati, but Ramvati ≠ Ram Wati",
     "🔊 Spoken read-back, digit by digit, and a recorded “हाँ” before anything can be exported",
     "🔒 Full Aadhaar masked to last 4 digits · no audio stored · a person always does the final submit",
-    "🧩 Every form is one JSON schema: pension today, scholarships and ration cards next",
+    "🧩 Every form is one JSON file: old-age and widow pension today · Hindi and Tamil today",
+    "📏 Measured: 100% of fields on 40 tuned test conversations, 75% on held-out wording (synthetic, see README)",
   ], "github.com/mahak867/Bol-Ke-Bharo"));
   await page.waitForTimeout(9000);
   const video = page.video();
