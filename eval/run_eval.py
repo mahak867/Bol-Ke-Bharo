@@ -222,6 +222,9 @@ def main():
     out += [f"| {a} | {n} | {acc:.1f}% | {caught} | {fa} | {done:.0f}% |" for a, n, acc, caught, fa, done in rows]
     out.append(f"\nOffline engine, {ms:.1f} ms per turn on this machine. Held-out set 3 fields most often wrong: "
                + (", ".join(f"{k} ({v})" for k, v in sorted(misses.items(), key=lambda x: -x[1])) or "none") + ".")
+    if isinstance(EXTRACTOR, Throttled):
+        out.append(f"{EXTRACTOR.calls} API calls; {EXTRACTOR.inner.fallbacks} fell back to the offline rules"
+                   + (" (results are NOT a clean measurement of the model)" if EXTRACTOR.inner.fallbacks else "") + ".")
     text = "\n".join(out)
     print(text)
     name = "results" + ("" if args.extractor == "rules" else f"-{args.extractor}") \

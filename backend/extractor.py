@@ -62,6 +62,7 @@ def _schema_for_prompt(schema: dict) -> str:
 class LLMExtractor:
     """Shared prompt and safety net. Subclasses implement _call(user) -> Extraction | None."""
     name = "LLM"
+    fallbacks = 0   # turns answered by the offline rules because the API call failed
 
     def extract(self, schema: dict, state: dict, speaker: str, segment: str, recent: list[str],
                 expected: str | None = None) -> Extraction:
@@ -78,6 +79,7 @@ class LLMExtractor:
             log.warning("%s extraction failed (%s: %s); using offline rules", self.name, type(e).__name__, e)
             result = None
         if result is None:
+            self.fallbacks += 1
             return RuleExtractor().extract(schema, state, speaker, segment, recent, expected)
         return result
 
