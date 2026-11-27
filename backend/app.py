@@ -105,6 +105,12 @@ def end(sid: str):
     return {"deleted": True}
 
 
+@app.get("/sw.js")
+def service_worker():
+    # Served from the root so it can control the whole app.
+    return FileResponse(WEB / "sw.js", media_type="text/javascript")
+
+
 @app.get("/")
 def index():
     return FileResponse(WEB / "index.html")

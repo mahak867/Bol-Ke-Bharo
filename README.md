@@ -29,6 +29,8 @@ rejection guard catches mistakes, and everything is read back to the citizen for
 | Voice loop | ✅ Hands-free turn-taking, no-input retry ladder, voice commands (“दोबारा”, “रुको”, “गाँव बदलो”), on-screen event labels |
 | Speech | Browser Web Speech API (`hi-IN`) for listening and speaking. Sarvam / Bhashini are the next step. |
 | L3 Portal autofill | ✅ Practice portal fills itself (`web/portal.html`); Chrome extension in `extension/` fills the open portal tab. Never touches captcha, OTP or submit. |
+| Citizen's slip | ✅ After "हाँ": a printable one-page slip in her language (and a WhatsApp share) showing exactly what was filed and when she agreed. Aadhaar stays masked. |
+| Phone | ✅ Installable app (manifest + service worker) for the Android phones many CSC operators use. Answers are never cached on the device. |
 | Languages | ✅ Hindi / Hinglish and Tamil (questions, read-back, voice commands, Tamil name romanisation) |
 | Forms | ✅ Old-age pension and widow pension, each one JSON file in `schemas/` |
 

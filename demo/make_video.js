@@ -89,6 +89,11 @@ const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURI
   await page.goto(`http://localhost:8000/web/portal.html?session=${sid}`);
   await page.waitForFunction(() => document.getElementById('status').textContent.includes('fields filled'), null, { timeout: 60000 });
   await page.waitForTimeout(3500);
+  // The citizen's slip.
+  await page.goto(`http://localhost:8000/web/slip.html?session=${sid}`);
+  await page.waitForSelector('.consent');
+  await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
+  await page.waitForTimeout(3500);
 
   // Same app in Tamil.
   await page.goto('http://localhost:8000/');
