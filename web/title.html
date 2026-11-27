@@ -31,7 +31,9 @@ document.getElementById("card").innerHTML = end ? `
   <p>Lakhs of citizens get pension forms filled at Common Service Centres.</p>
   <p>They speak Hindi or Tamil. The portal wants typed English. One spelling mismatch and the form is rejected weeks later.</p>
   <p>Here, the operator and the citizen just talk.</p>
-  <small>Real voices, recorded live. Captions show what is said.</small>`;
+  <small>${new URLSearchParams(location.search).has("sim")
+    ? "Automated walkthrough of the real app: the citizen's answers are fed in by a script. Captions show what is said."
+    : "Real voices, recorded live. Captions show what is said."}</small>`;
 </script>
 </body>
 </html>
