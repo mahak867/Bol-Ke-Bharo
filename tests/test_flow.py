@@ -323,3 +323,15 @@ def test_claude_failure_falls_back_to_rules():
 
     r = Broken().extract(load_schema("pension_up"), {}, "citizen", "मेरी उम्र 68 साल है", [], expected="age")
     assert r.updates[0].key == "age" and r.updates[0].value == "68"
+
+
+def test_slip_only_after_consent_and_in_citizen_language():
+    s = _filled(bank_account_name="Ramvati")
+    try:
+        s.slip(); assert False
+    except PermissionError:
+        pass
+    s.add_turn("citizen", "हाँ", Scripted([ups(consent="yes")]))
+    slip = s.slip()
+    assert slip["lang"] == "hi" and slip["consent_words"] == "हाँ"
+    assert any(r["value"] == "XXXX XXXX 9012" for r in slip["rows"])   # Aadhaar stays masked on paper

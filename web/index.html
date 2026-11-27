@@ -167,6 +167,7 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
     <div class="actions">
       <button id="speakBtn">Read the question again</button>
       <button class="primary" id="exportBtn" disabled>Send to portal</button>
+      <button id="slipBtn" disabled>Print slip for the citizen</button>
     </div>
     <p class="fine">Independent assistant, not a government service. Audio is not stored. Aadhaar is kept as its last 4 digits only. A person always completes the captcha, the OTP and the final submit.</p>
   </section>
@@ -272,7 +273,7 @@ function render(s) {
     const name = { ASSISTANT: "App", OPERATOR: "Operator", CITIZEN: "Citizen" }[who] || who;
     return `<div class="${who}"><b>${name}</b><span>${esc(rest.join(": "))}</span></div>`;
   }).join("");
-  $("exportBtn").disabled = s.phase !== "done";
+  $("exportBtn").disabled = $("slipBtn").disabled = s.phase !== "done";
   if (s.phase === "done") setMode("done");
 }
 
@@ -374,6 +375,7 @@ $("hf").onchange = (e) => { handsFree = e.target.checked; if (!handsFree) stopLi
 
 $("typed").onsubmit = (e) => { e.preventDefault(); sendTurn($("who").value, $("text").value); $("text").value = ""; };
 $("newBtn").onclick = newSession;
+$("slipBtn").onclick = () => window.open(`/web/slip.html?session=${encodeURIComponent(state.session_id)}`, "_blank");
 $("formPick").onchange = newSession;
 $("langPick").onclick = (e) => { const b = e.target.closest("button"); if (!b || b.dataset.lang === lang) return;
   lang = b.dataset.lang; speechSynthesis.cancel(); newSession(); };

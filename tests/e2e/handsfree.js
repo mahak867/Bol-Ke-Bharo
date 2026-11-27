@@ -25,6 +25,11 @@ const ANSWERS = ["", "जी, मेरा नाम रामवती है",
   console.log('portal:', await portal.textContent('#status'), '| name =', await portal.inputValue('#applicantName'),
               '| captcha untouched =', (await portal.inputValue('#captcha')) === '');
   if (process.argv[2]) await portal.screenshot({ path: process.argv[2], fullPage: true });
+  // The citizen's slip.
+  const [slip] = await Promise.all([p.context().waitForEvent('page'), p.click('#slipBtn')]);
+  await slip.waitForFunction(() => document.querySelector('.consent'), null, { timeout: 15000 });
+  console.log('slip:', (await slip.textContent('.consent')).slice(0, 60), '| whatsapp =', await slip.isVisible('#wa'));
+  if (process.argv[3]) await slip.screenshot({ path: process.argv[3], fullPage: true });
   console.log('heard:', (await p.evaluate(() => window.__heard)).length, 'errors:', errs);
   console.log('log:', (await p.$$eval('.log div', d => d.map(x => x.textContent))).slice(0, 4));
   await b.close();

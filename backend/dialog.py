@@ -292,6 +292,22 @@ class Session:
                 "consent_at": self.consent["at"], "warnings": self.warnings()}
 
 
+    def slip(self) -> dict:
+        """What the citizen takes home: every confirmed answer in her language, and when she said yes."""
+        if not (self.consent and self.consent["answer"] == "yes"):
+            raise PermissionError("citizen has not confirmed the read-back")
+        return {
+            "lang": self.lang,
+            "title": self.schema["title"],
+            "rows": [{"label": f["label"], "value": self.display(f["key"]), "portal": self.latin(f["key"])}
+                     for f in self.schema["fields"] if f["key"] in self.values],
+            "consent_at": self.consent["at"],
+            "consent_words": self.consent["evidence"],
+            "mobile": self.values.get("mobile"),
+            "warnings": [w["label"] for w in self.warnings()],
+        }
+
+
 class SessionStore:
     def __init__(self):
         self._sessions: dict[str, Session] = {}

@@ -82,6 +82,14 @@ def export(sid: str):
         raise HTTPException(409, str(e))
 
 
+@app.get("/api/sessions/{sid}/slip")
+def slip(sid: str):
+    try:
+        return _session(sid).slip()
+    except PermissionError as e:
+        raise HTTPException(409, str(e))
+
+
 @app.get("/api/latest-confirmed")
 def latest_confirmed():
     """Used by the Chrome extension on the operator's own machine."""
