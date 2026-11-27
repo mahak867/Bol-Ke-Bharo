@@ -10,6 +10,8 @@ is filled for the operator to submit, and the citizen gets a slip of exactly wha
 
 ![Name mismatch caught by voice](demo/screenshot.png)
 
+**Try it live:** https://bol-ke-bharo.vercel.app (Chrome, allow the microphone). Recording mode with live captions: https://bol-ke-bharo.vercel.app/?captions=1
+
 **Demo video:** [`demo/bol-ke-bharo-demo.mp4`](demo/bol-ke-bharo-demo.mp4) (automated walkthrough, captions in Hindi and English).
 
 ## Why it scores where it matters

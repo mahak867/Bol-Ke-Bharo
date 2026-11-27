@@ -11,7 +11,7 @@ The form asks for five things. All five are required.
 | 1 | Pain point being solved | Paste `1_pain_point.txt` | Ready |
 | 2 | Impact in real-world India | Paste `2_impact.txt` | Ready |
 | 3 | 3-minute screen recording | **Record it yourselves**, by voice (below) | To do |
-| 4 | GitHub project link | `https://github.com/mahak867/Bol-Ke-Bharo` (public) | Ready |
+| 4 | GitHub project link | `https://github.com/mahak867/Bol-Ke-Bharo` (public). The README links the live app: https://bol-ke-bharo.vercel.app | Ready |
 | 5 | How you used Wispr Flow to build | Fill in the template below. **Every sentence must be true.** | To do |
 
 ---
@@ -38,15 +38,17 @@ $env:GEMINI_API_KEY="your-key"
 python -m uvicorn backend.app:app --port 8000
 ```
 
-Open http://localhost:8000, allow the microphone, keep **Hands-free** ticked. The header says which
-engine is running ("offline mode" or "with Gemini").
+Open **http://localhost:8000/?captions=1**, allow the microphone, keep **Hands-free** ticked. With `?captions=1`
+everything said is subtitled live on screen, so no voiceover is needed. The header says which engine is running
+("offline mode" or "with Gemini"). For the opening and closing cards, record **/web/title.html** (about 6 seconds)
+before, and **/web/title.html?end** after. (The live site works the same way: https://bol-ke-bharo.vercel.app/?captions=1)
 
 **Shot list (about 2:45).** One person is the operator, one is the citizen. Record with `Win + Alt + R` (Windows)
 or OBS. Rehearse twice. Keep it one continuous take if you can.
 
 | Time | What happens | Citizen says |
 |---|---|---|
-| 0:00 | Operator, on camera or voice-over: "Lakhs of people get pension forms filled at CSCs. One spelling mismatch and the form is rejected weeks later. This is Bol Ke Bharo." | |
+| 0:00 | Title card (/web/title.html), about 6 seconds. No voiceover: the captions carry the story. | |
 | 0:20 | Click **New application**. The app greets her and asks her name. | "जी, मेरा नाम रामवती है" |
 | | | "पति का नाम श्याम लाल है" |
 | | | "मेरी उम्र अड़सठ साल है" |
@@ -61,7 +63,7 @@ or OBS. Rehearse twice. Keep it one continuous take if you can.
 | 2:20 | Read-back again. | "हाँ जी, सब सही है" |
 | 2:25 | "Citizen confirmed". Click **Send to portal**: the practice portal fills itself; captcha, OTP and Submit stay empty. | |
 | 2:35 | Click **Print slip for the citizen**: her slip in Hindi, with the time she said "हाँ". | |
-| 2:45 | Optional: click **தமிழ்** and answer one or two questions in Tamil. End on the GitHub link. | |
+| 2:45 | Optional: click **தமிழ்** and answer one or two questions in Tamil. End on the closing card (/web/title.html?end). | |
 
 If the app mishears a word, keep going: tap the field and correct it, or say "दोबारा". Recovering on camera
 shows the safety net working, which judges value more than a perfect take.
