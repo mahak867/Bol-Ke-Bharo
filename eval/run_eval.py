@@ -169,7 +169,14 @@ def main():
     ap.add_argument("--rpm", type=float, default=0, help="max LLM requests per minute (e.g. 10 on a free tier)")
     args = ap.parse_args()
     if args.extractor != "rules":
-        EXTRACTOR = Throttled(GeminiExtractor() if args.extractor == "gemini" else ClaudeExtractor(), args.rpm)
+        try:
+            EXTRACTOR = Throttled(GeminiExtractor() if args.extractor == "gemini" else ClaudeExtractor(), args.rpm)
+        except Exception as e:
+            raise SystemExit(f"Could not start the {args.extractor} extractor: {e}\n"
+                             "Set GEMINI_API_KEY (or ANTHROPIC_API_KEY for claude) in this terminal first.")
+        # Fail fast on a bad key or model instead of quietly scoring the offline fallback.
+        import logging
+        logging.basicConfig(level=logging.WARNING, format="  warning: %(message)s")
     counts = {"hi": 16, "lat": 12, "ta": 12, "held": 16, "held2": 16, "held3": 20}
     # Always generate every set in the same order, so each conversation is identical across runs.
     all_styles = [st for st, n in counts.items() for _ in range(n)]
