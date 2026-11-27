@@ -314,15 +314,41 @@ def test_int_fields_reject_ambiguous_numbers():
             pass
 
 
-def test_claude_failure_falls_back_to_rules():
-    from backend.extractor import ClaudeExtractor
+def test_llm_failure_falls_back_to_rules():
+    from backend.extractor import ClaudeExtractor, GeminiExtractor
+    for cls in (ClaudeExtractor, GeminiExtractor):
+        class Broken(cls):
+            def __init__(self): pass
+            def _call(self, user): raise ConnectionError("offline")
 
-    class Broken(ClaudeExtractor):
-        def __init__(self): pass
-        def _call(self, user): raise ConnectionError("offline")
+        r = Broken().extract(load_schema("pension_up"), {}, "citizen", "मेरी उम्र 68 साल है", [], expected="age")
+        assert r.updates[0].key == "age" and r.updates[0].value == "68", cls
 
-    r = Broken().extract(load_schema("pension_up"), {}, "citizen", "मेरी उम्र 68 साल है", [], expected="age")
-    assert r.updates[0].key == "age" and r.updates[0].value == "68"
+
+def test_gemini_adapter_parses_json_reply():
+    from types import SimpleNamespace
+    from backend.extractor import GeminiExtractor
+    seen = {}
+
+    class FakeModels:
+        def generate_content(self, model, contents, config):
+            seen.update(model=model, contents=contents, schema=config.response_json_schema)
+            return SimpleNamespace(text='{"updates": [{"key": "name", "value": "Ramvati", "confidence": 0.95, '
+                                        '"evidence": "naam Ramvati"}], "is_correction": false, "consent": null}')
+
+    g = GeminiExtractor(client=SimpleNamespace(models=FakeModels()))
+    r = g.extract(load_schema("pension_up"), {}, "citizen", "mera naam Ramvati hai", ["ASSISTANT: naam?"], expected="name")
+    assert r.updates[0].value == "Ramvati" and "expected" not in seen["contents"]
+    assert "asked for: name" in seen["contents"] and "updates" in seen["schema"]["properties"]
+
+
+def test_make_extractor_picks_by_key(monkeypatch):
+    from backend import extractor as E
+    for k in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "GEMINI_API_KEY", "GOOGLE_API_KEY", "BKB_EXTRACTOR"):
+        monkeypatch.delenv(k, raising=False)
+    assert isinstance(E.make_extractor(), E.RuleExtractor)
+    monkeypatch.setenv("GEMINI_API_KEY", "test")
+    assert isinstance(E.make_extractor(), E.GeminiExtractor)
 
 
 def test_slip_only_after_consent_and_in_citizen_language():

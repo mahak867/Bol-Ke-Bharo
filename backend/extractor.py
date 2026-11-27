@@ -1,9 +1,10 @@
 """Transcript segment -> field updates.
 
-ClaudeExtractor is the real engine. RuleExtractor is a tiny offline fallback so the
-app and tests run without an API key; it only understands a few obvious patterns.
+LLMExtractor is the real engine, with two adapters: ClaudeExtractor and GeminiExtractor. Both share
+one prompt and fall back to RuleExtractor (offline, word lists, no key needed) on any API failure.
 """
 import json
+import logging
 import os
 import re
 from typing import Literal, Optional
@@ -13,6 +14,8 @@ from pydantic import BaseModel, Field
 from .lexicon import DIGITS, YES, answer, tokens
 
 MODEL = os.environ.get("BKB_MODEL", "claude-sonnet-5-5")
+GEMINI_MODEL = os.environ.get("BKB_GEMINI_MODEL", "gemini-2.5-flash")
+log = logging.getLogger("bkb")
 
 
 class FieldUpdate(BaseModel):
@@ -31,7 +34,7 @@ class Extraction(BaseModel):
 
 SYSTEM = """You are the extraction engine of a form-filling assistant for Indian government applications.
 You receive one new segment of a live conversation between an OPERATOR (who fills the form) and a CITIZEN,
-in Hindi, Hinglish or a regional dialect, transcribed by speech recognition that may contain errors.
+in Hindi, Hinglish, Tamil or a regional dialect, transcribed by speech recognition that may contain errors.
 
 Rules:
 1. Extract values ONLY for keys in the form schema. Never invent or guess values that were not said.
@@ -56,10 +59,9 @@ def _schema_for_prompt(schema: dict) -> str:
     return json.dumps(slim, ensure_ascii=False)
 
 
-class ClaudeExtractor:
-    def __init__(self, client=None):
-        import anthropic
-        self.client = client or anthropic.Anthropic()
+class LLMExtractor:
+    """Shared prompt and safety net. Subclasses implement _call(user) -> Extraction | None."""
+    name = "LLM"
 
     def extract(self, schema: dict, state: dict, speaker: str, segment: str, recent: list[str],
                 expected: str | None = None) -> Extraction:
@@ -71,17 +73,27 @@ class ClaudeExtractor:
             + f"New segment ({speaker.upper()}): {segment}"
         )
         try:
-            response = self._call(user)
+            result = self._call(user)
         except Exception as e:   # network, rate limit, auth, invalid JSON: keep the conversation going
-            import logging
-            logging.getLogger("bkb").warning("Claude extraction failed (%s); using offline rules", type(e).__name__)
+            log.warning("%s extraction failed (%s: %s); using offline rules", self.name, type(e).__name__, e)
+            result = None
+        if result is None:
             return RuleExtractor().extract(schema, state, speaker, segment, recent, expected)
-        if response.stop_reason == "refusal" or response.parsed_output is None:
-            return RuleExtractor().extract(schema, state, speaker, segment, recent, expected)
-        return response.parsed_output
+        return result
 
-    def _call(self, user: str):
-        return self.client.beta.messages.parse(
+    def _call(self, user: str) -> Extraction | None:
+        raise NotImplementedError
+
+
+class ClaudeExtractor(LLMExtractor):
+    name = "Claude"
+
+    def __init__(self, client=None):
+        import anthropic
+        self.client = client or anthropic.Anthropic()
+
+    def _call(self, user: str) -> Extraction | None:
+        response = self.client.beta.messages.parse(
             model=MODEL,
             max_tokens=2000,
             betas=["server-side-fallback-2026-07-01"],
@@ -92,6 +104,36 @@ class ClaudeExtractor:
             messages=[{"role": "user", "content": user}],
             output_format=Extraction,
         )
+        if response.stop_reason == "refusal":
+            return None
+        return response.parsed_output
+
+
+class GeminiExtractor(LLMExtractor):
+    name = "Gemini"
+
+    def __init__(self, client=None):
+        if client is None:
+            from google import genai
+            # Reads GEMINI_API_KEY / GOOGLE_API_KEY from the environment.
+            client = genai.Client()
+        self.client = client
+
+    def _call(self, user: str) -> Extraction | None:
+        from google.genai import types
+        response = self.client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM,
+                temperature=0,
+                response_mime_type="application/json",
+                response_json_schema=Extraction.model_json_schema(),
+            ),
+        )
+        if not response.text:
+            return None
+        return Extraction.model_validate_json(response.text)
 
 
 _HINDI_NUM = {"saath": 60, "sath": 60, "sattar": 70, "assi": 80, "nabbe": 90, "pachpan": 55,
@@ -194,8 +236,12 @@ class RuleExtractor:
 
 
 def make_extractor():
+    """BKB_EXTRACTOR = auto (default) | claude | gemini | rules. Auto uses the first key it finds."""
     mode = os.environ.get("BKB_EXTRACTOR", "auto")
-    has_key = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
-    if mode == "rules" or (mode == "auto" and not has_key):
-        return RuleExtractor()
-    return ClaudeExtractor()
+    has_claude = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+    has_gemini = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+    if mode == "claude" or (mode == "auto" and has_claude):
+        return ClaudeExtractor()
+    if mode == "gemini" or (mode == "auto" and has_gemini):
+        return GeminiExtractor()
+    return RuleExtractor()
