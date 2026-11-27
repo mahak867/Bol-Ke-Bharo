@@ -63,7 +63,8 @@ button { font: inherit; padding: 8px 18px; margin-top: 12px; cursor: pointer; }
   const sid = new URLSearchParams(location.search).get("session");
   if (!sid) return;
   const status = document.getElementById("status");
-  const [res, map] = await Promise.all([fetch(`/api/sessions/${encodeURIComponent(sid)}/export`), fetch("/web/portal-map.json").then((r) => r.json())]);
+  const [res, map] = await Promise.all([fetch(`/api/sessions/${encodeURIComponent(sid)}/export`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ snapshot: new URLSearchParams(location.hash.slice(1)).get("s") }) }), fetch("/web/portal-map.json").then((r) => r.json())]);
   if (!res.ok) { status.textContent = "This application has not been confirmed by the citizen yet."; status.style.color = "#c00"; return; }
   const data = await res.json();
   status.textContent = "Filling from the confirmed conversation…";

@@ -308,6 +308,26 @@ class Session:
         }
 
 
+    # ---------- snapshot, so any server instance can continue the conversation ----------
+    _SNAPSHOT = ("id", "lang", "values", "meta", "phase", "consent", "pending_confirm", "asked_failures",
+                 "started", "touched", "say", "expecting", "open_failure", "awaiting_edit")
+
+    def to_dict(self) -> dict:
+        d = {k: getattr(self, k) for k in self._SNAPSHOT}
+        d["form_id"] = self.schema["form_id"]
+        d["transcript"] = self.transcript[-30:]
+        d["events"] = self.events[-20:]
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict, schema: dict) -> "Session":
+        s = cls(schema, d["lang"])
+        for k in cls._SNAPSHOT:
+            setattr(s, k, d[k])
+        s.transcript, s.events = d["transcript"], d["events"]
+        return s
+
+
 class SessionStore:
     def __init__(self):
         self._sessions: dict[str, Session] = {}
@@ -323,6 +343,10 @@ class SessionStore:
         greeting = s.t(schema["greeting"]) if "greeting" in schema else ""
         s.say = f"{greeting} {s.next_prompt()}".strip()
         s.transcript.append(f"ASSISTANT: {s.say}")
+        self._sessions[s.id] = s
+        return s
+
+    def put(self, s: Session) -> Session:
         self._sessions[s.id] = s
         return s
 

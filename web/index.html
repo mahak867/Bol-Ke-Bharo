@@ -123,6 +123,12 @@ tr.fresh td.val { animation: ink 1.2s ease-out; }
 .primary { background: var(--stamp); border-color: var(--stamp); color: var(--stamp-ink); font-weight: 700; }
 pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: auto; font-size: 13px; max-height: 280px; }
 .fine { font-size: 13px; color: var(--ink-2); margin-top: 14px; }
+/* Recording mode (?captions=1): live subtitles of everything said, for a video with no voiceover. */
+.cap { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: min(1100px, 94vw); z-index: 50;
+  background: rgba(15, 18, 24, .9); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 22px; line-height: 1.4;
+  text-align: center; display: none; }
+.cap b { color: #f0b84a; margin-right: 6px; }
+.cap.on { display: block; }
 @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -176,8 +182,16 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
     <p class="fine">Independent assistant, not a government service. Audio is not stored. Aadhaar is kept as its last 4 digits only. A person always completes the captcha, the OTP and the final submit.</p>
   </section>
 </main>
+<div class="cap" id="cap" aria-hidden="true"></div>
 <script>
 const $ = (id) => document.getElementById(id);
+const CAPTIONS = new URLSearchParams(location.search).has("captions");
+function caption(who, text) {
+  if (!CAPTIONS || !text) return;
+  const short = text.length > 170 ? text.slice(0, 170) + "…" : text;
+  $("cap").innerHTML = `<b>${esc(who)}</b>${esc(short)}`;
+  $("cap").classList.add("on");
+}
 let state = null, timerStart = 0, timerHandle = null;
 
 async function api(path, opts = {}) {
@@ -212,6 +226,7 @@ function setMode(m) {
 function speak(text, then) {
   stopListening();
   setMode("speaking");
+  caption("App:", text);
   if (!("speechSynthesis" in window) || !text) { then && then(); return; }
   speechSynthesis.cancel(); clearTimeout(ttsTimer);
   const u = new SpeechSynthesisUtterance(text);
@@ -306,7 +321,7 @@ async function newSession() {
 async function sendTurn(speaker, text) {
   if (!text.trim() || !state) return;
   $("interim").textContent = "…";
-  try { render(await api(`/api/sessions/${state.session_id}/turn`, { method: "POST", body: JSON.stringify({ speaker, text }) })); }
+  try { render(await api(`/api/sessions/${state.session_id}/turn`, { method: "POST", body: JSON.stringify({ speaker, text, snapshot: state.snapshot }) })); }
   catch (e) { alert(e.message); }
   $("interim").textContent = "";
 }
@@ -343,10 +358,12 @@ function listen(speaker, auto) {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const r = e.results[i];
-      if (r.isFinal) { heard = true; handleSpeech(speaker, r[0].transcript.trim()); }
+      if (r.isFinal) { heard = true; caption(speaker === "operator" ? "Operator:" : "Citizen:", r[0].transcript.trim());
+                       handleSpeech(speaker, r[0].transcript.trim()); }
       else interim += r[0].transcript;
     }
     $("interim").textContent = interim;
+    if (interim) caption(speaker === "operator" ? "Operator:" : "Citizen:", interim);
   };
   rec.onerror = (e) => {
     if (e.error === "not-allowed") { handsFree = false; $("hf").checked = false;
@@ -380,7 +397,7 @@ $("hf").onchange = (e) => { handsFree = e.target.checked; if (!handsFree) stopLi
 
 $("typed").onsubmit = (e) => { e.preventDefault(); sendTurn($("who").value, $("text").value); $("text").value = ""; };
 $("newBtn").onclick = newSession;
-$("slipBtn").onclick = () => window.open(`/web/slip.html?session=${encodeURIComponent(state.session_id)}`, "_blank");
+$("slipBtn").onclick = () => window.open(`/web/slip.html?session=${encodeURIComponent(state.session_id)}#s=${state.snapshot}`, "_blank");
 $("formPick").onchange = newSession;
 $("langPick").onclick = (e) => { const b = e.target.closest("button"); if (!b || b.dataset.lang === lang) return;
   lang = b.dataset.lang; speechSynthesis.cancel(); newSession(); };
@@ -388,12 +405,12 @@ $("speakBtn").onclick = () => state && speak(state.say, afterSpeaking);
 $("form").onclick = async (e) => {
   const td = e.target.closest("td.val"); if (!td) return;
   const v = prompt("Type the correct value", ""); if (v === null) return;
-  try { render(await api(`/api/sessions/${state.session_id}/edit`, { method: "POST", body: JSON.stringify({ key: td.dataset.key, value: v }) })); }
+  try { render(await api(`/api/sessions/${state.session_id}/edit`, { method: "POST", body: JSON.stringify({ key: td.dataset.key, value: v, snapshot: state.snapshot }) })); }
   catch (err) { alert(err.message); }
 };
 $("exportBtn").onclick = () => {
   // The practice portal fetches the confirmed application and types it in; the operator submits.
-  window.open(`/web/portal.html?session=${encodeURIComponent(state.session_id)}`, "_blank");
+  window.open(`/web/portal.html?session=${encodeURIComponent(state.session_id)}#s=${state.snapshot}`, "_blank");
   addEvent("good", "Sent to the portal for the operator to check and submit");
 };
 speechSynthesis && speechSynthesis.getVoices();

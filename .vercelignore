@@ -1,0 +1,8 @@
+demo/
+tests/
+eval/
+docs/
+reports/
+research_notes/
+extension/
+*.md

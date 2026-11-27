@@ -361,3 +361,28 @@ def test_slip_only_after_consent_and_in_citizen_language():
     slip = s.slip()
     assert slip["lang"] == "hi" and slip["consent_words"] == "हाँ"
     assert any(r["value"] == "XXXX XXXX 9012" for r in slip["rows"])   # Aadhaar stays masked on paper
+
+
+def test_conversation_survives_a_fresh_server_instance(monkeypatch):
+    """Serverless hosting may send each request to a different instance with empty memory."""
+    import base64, importlib, json
+    monkeypatch.setenv("BKB_EXTRACTOR", "rules")
+    monkeypatch.setenv("BKB_SECRET", "test-secret")
+    import backend.app as appmod
+    importlib.reload(appmod)
+    c = TestClient(appmod.app)
+    s = c.post("/api/sessions", json={"form_id": "pension_up"}).json()
+    sid, snap = s["session_id"], s["snapshot"]
+    appmod.store._sessions.clear()                      # a different instance: nothing in memory
+    s = c.post(f"/api/sessions/{sid}/turn", json={"speaker": "citizen", "text": "जी, मेरा नाम रामवती है", "snapshot": snap}).json()
+    assert next(f for f in s["fields"] if f["key"] == "name")["value"] == "रामवती"
+    appmod.store._sessions.clear()
+    assert c.post(f"/api/sessions/{sid}/turn", json={"speaker": "citizen", "text": "x"}).status_code == 404   # no snapshot
+
+    # Forging consent in the snapshot breaks the signature.
+    body, mac = s["snapshot"].rsplit(".", 1)
+    d = json.loads(base64.urlsafe_b64decode(body))
+    d["consent"], d["phase"] = {"answer": "yes", "at": 0, "evidence": "हाँ"}, "done"
+    forged = base64.urlsafe_b64encode(json.dumps(d).encode()).decode() + "." + mac
+    assert c.post(f"/api/sessions/{sid}/export", json={"snapshot": forged}).status_code == 404
+    assert c.post(f"/api/sessions/{sid}/export", json={"snapshot": s["snapshot"]}).status_code == 409  # genuine, not confirmed yet

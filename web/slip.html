@@ -42,7 +42,8 @@ const T = {
 const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 (async () => {
   const sid = new URLSearchParams(location.search).get("session");
-  const r = await fetch(`/api/sessions/${encodeURIComponent(sid || "")}/slip`);
+  const r = await fetch(`/api/sessions/${encodeURIComponent(sid || "")}/slip`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ snapshot: new URLSearchParams(location.hash.slice(1)).get("s") }) });
   if (!r.ok) { document.getElementById("page").textContent = "No confirmed application to print yet."; return; }
   const s = await r.json(), t = T[s.lang] || T.hi;
   document.documentElement.lang = s.lang;
