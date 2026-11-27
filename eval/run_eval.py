@@ -4,14 +4,36 @@ The conversations are synthetic (written by us, not recorded from real people) b
 real speech recognition produces: Devanagari and Latin script, Tamil, digits in both scripts, numbers
 as words, filler words ("जी, मेरा नाम ... है"), and Aadhaar/passbook name mismatches.
 
-    python -m eval.run_eval            # prints a table and writes eval/results.md
+    python -m eval.run_eval                                  # offline engine, all sets -> eval/results.md
+    python -m eval.run_eval --extractor gemini --sets held3  # Gemini on held-out set 3 -> eval/results-gemini.md
+
+For gemini/claude, set GEMINI_API_KEY or ANTHROPIC_API_KEY first. --rpm limits requests per minute
+(free tiers are strict); the same conversations are generated every time (fixed random seed).
 """
+import argparse
 import random
 import time
 from pathlib import Path
 
 from backend.dialog import SessionStore
-from backend.extractor import RuleExtractor
+from backend.extractor import ClaudeExtractor, GeminiExtractor, RuleExtractor
+
+
+class Throttled:
+    """Wraps an extractor so it makes at most `rpm` calls a minute, and counts offline fallbacks."""
+    def __init__(self, inner, rpm: float):
+        self.inner, self.gap, self.last, self.calls = inner, 60.0 / rpm if rpm else 0, 0.0, 0
+
+    def extract(self, *args, **kwargs):
+        wait = self.last + self.gap - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+        self.last = time.monotonic()
+        self.calls += 1
+        return self.inner.extract(*args, **kwargs)
+
+
+EXTRACTOR = RuleExtractor()
 from backend.schema import load_schema
 
 random.seed(7)
@@ -114,7 +136,7 @@ def run_one(style: str, i: int) -> dict:
     lang, lines, name, bank, exp = (heldout(i) if style == "held" else heldout2(i) if style == "held2" else heldout3(i) if style == "held3"
                                     else conversation(style, i))
     s = SessionStore().create(load_schema("pension_up"), lang)
-    ex, turns, mismatch_flagged = RuleExtractor(), 0, False
+    ex, turns, mismatch_flagged = EXTRACTOR, 0, False
     for line in lines:
         s.add_turn("citizen", line, ex)
         turns += 1
@@ -140,9 +162,31 @@ def run_one(style: str, i: int) -> dict:
 
 
 def main():
-    styles = ["hi"] * 16 + ["lat"] * 12 + ["ta"] * 12 + ["held"] * 16 + ["held2"] * 16 + ["held3"] * 20
+    global EXTRACTOR
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--extractor", choices=["rules", "gemini", "claude"], default="rules")
+    ap.add_argument("--sets", default="all", help="comma list of: hi,lat,ta,held,held2,held3 (default all)")
+    ap.add_argument("--rpm", type=float, default=0, help="max LLM requests per minute (e.g. 10 on a free tier)")
+    args = ap.parse_args()
+    if args.extractor != "rules":
+        EXTRACTOR = Throttled(GeminiExtractor() if args.extractor == "gemini" else ClaudeExtractor(), args.rpm)
+    counts = {"hi": 16, "lat": 12, "ta": 12, "held": 16, "held2": 16, "held3": 20}
+    # Always generate every set in the same order, so each conversation is identical across runs.
+    all_styles = [st for st, n in counts.items() for _ in range(n)]
+    wanted = set(counts) if args.sets == "all" else set(args.sets.split(","))
+    random.seed(7)
+    planned = [(i, st) for i, st in enumerate(all_styles)]
+    styles = [st for _, st in planned]
     t0 = time.perf_counter()
-    results = [run_one(st, i) for i, st in enumerate(styles)]
+    results = []
+    for i, st in planned:
+        if st in wanted:
+            results.append(run_one(st, i))
+            if args.extractor != "rules":
+                print(f"  {len(results)} done ({st})", flush=True)
+        else:   # skipped sets still consume the same random draws, so the others stay identical
+            heldout(i) if st == "held" else heldout2(i) if st == "held2" else heldout3(i) if st == "held3" \
+                else conversation(st, i)
     ms = (time.perf_counter() - t0) * 1000 / sum(r["turns"] for r in results)
     rows = []
     groups = [("Hindi (Devanagari)", {"hi"}), ("Hinglish (Latin script)", {"lat"}), ("Tamil", {"ta"}),
@@ -151,6 +195,8 @@ def main():
               ("**Held-out set 3 (Hindi + Tamil, never used for tuning)**", {"held3"})]
     for label, sel in groups:
         rs = [r for r in results if r["style"] in sel]
+        if not rs:
+            continue
         fields = [ok for r in rs for ok in r["correct"].values()]
         flag_cases = [r for r in rs if r["should_flag"]]
         rows.append((label, len(rs), 100 * sum(fields) / len(fields),
@@ -171,8 +217,14 @@ def main():
                + (", ".join(f"{k} ({v})" for k, v in sorted(misses.items(), key=lambda x: -x[1])) or "none") + ".")
     text = "\n".join(out)
     print(text)
-    (Path(__file__).parent / "results.md").write_text(
-        "# Offline engine evaluation\n\nSynthetic conversations (written by the team, not real recordings): "
+    name = "results" + ("" if args.extractor == "rules" else f"-{args.extractor}") \
+        + ("" if args.sets == "all" else "-" + args.sets.replace(",", "-")) + ".md"
+    engine = {"rules": "Offline engine", "gemini": f"Gemini ({__import__('backend.extractor', fromlist=['x']).GEMINI_MODEL})",
+              "claude": f"Claude ({__import__('backend.extractor', fromlist=['x']).MODEL})"}[args.extractor]
+    text = text.replace("Offline engine,", f"{engine},")
+    print(f"\nWrote eval/{name}")
+    (Path(__file__).parent / name).write_text(
+        f"# {engine} evaluation\n\nSynthetic conversations (written by the team, not real recordings): "
         "Devanagari, Hinglish in Latin script and Tamil; digits in both scripts; numbers as words; filler words; "
         "Aadhaar/passbook spelling mismatches. The tuned sets were used while building the offline extractor, "
         "so they flatter it. Held-out set 1 found one general gap (fixed-format answers inside a sentence), "
