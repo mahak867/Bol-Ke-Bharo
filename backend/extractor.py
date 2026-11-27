@@ -70,7 +70,18 @@ class ClaudeExtractor:
             + (f"The assistant's last question asked for: {expected}\n" if expected else "")
             + f"New segment ({speaker.upper()}): {segment}"
         )
-        response = self.client.beta.messages.parse(
+        try:
+            response = self._call(user)
+        except Exception as e:   # network, rate limit, auth, invalid JSON: keep the conversation going
+            import logging
+            logging.getLogger("bkb").warning("Claude extraction failed (%s); using offline rules", type(e).__name__)
+            return RuleExtractor().extract(schema, state, speaker, segment, recent, expected)
+        if response.stop_reason == "refusal" or response.parsed_output is None:
+            return RuleExtractor().extract(schema, state, speaker, segment, recent, expected)
+        return response.parsed_output
+
+    def _call(self, user: str):
+        return self.client.beta.messages.parse(
             model=MODEL,
             max_tokens=2000,
             betas=["server-side-fallback-2026-07-01"],
@@ -81,9 +92,6 @@ class ClaudeExtractor:
             messages=[{"role": "user", "content": user}],
             output_format=Extraction,
         )
-        if response.stop_reason == "refusal" or response.parsed_output is None:
-            return Extraction(updates=[], is_correction=False)
-        return response.parsed_output
 
 
 _HINDI_NUM = {"saath": 60, "sath": 60, "sattar": 70, "assi": 80, "nabbe": 90, "pachpan": 55,

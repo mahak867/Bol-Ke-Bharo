@@ -60,16 +60,18 @@ def turn(sid: str, body: Turn):
     if body.speaker not in ("operator", "citizen"):
         raise HTTPException(422, "speaker must be operator or citizen")
     s = _session(sid)
-    s.add_turn(body.speaker, body.text, extractor)
-    return s.public_state()
+    with s.lock:
+        s.add_turn(body.speaker, body.text, extractor)
+        return s.public_state()
 
 
 @app.post("/api/sessions/{sid}/edit")
 def edit(sid: str, body: Edit):
     s = _session(sid)
-    if not s.operator_edit(body.key, body.value):
-        raise HTTPException(422, f"invalid value for {body.key}")
-    return s.public_state()
+    with s.lock:
+        if not s.operator_edit(body.key, body.value):
+            raise HTTPException(422, f"invalid value for {body.key}")
+        return s.public_state()
 
 
 @app.get("/api/sessions/{sid}/export")

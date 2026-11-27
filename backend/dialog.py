@@ -1,4 +1,5 @@
 """Session state + dialog manager: applies extractions, runs the guard, picks what to say next."""
+import threading
 import time
 import uuid
 
@@ -32,6 +33,8 @@ class Session:
         self.say: str = ""
         self.expecting: str | None = None         # field the last question asked for
         self.open_failure: dict | None = None     # guard failure the last question asked about
+        self.awaiting_edit = False                # after "नहीं" to the read-back: which field is wrong?
+        self.lock = threading.Lock()              # one turn at a time per session
 
     # ---------- applying input ----------
     def add_turn(self, speaker: str, text: str, extractor) -> None:
@@ -75,6 +78,14 @@ class Session:
                 self.meta.pop(self.pending_confirm, None)
                 self.pending_confirm = None
 
+        # "नहीं" to the read-back with no correction in it: ask which detail is wrong.
+        if speaker == "citizen" and result.consent == "no" and not result.updates and self.phase == "collect" \
+                and self.consent and self.consent["answer"] == "no":
+            self.awaiting_edit = True
+            self.say = self.phrases["which_wrong"]
+            self.transcript.append(f"ASSISTANT: {self.say}")
+            return
+
         # Nothing usable from the citizen (noise, garbled speech): repeat the question.
         if speaker == "citizen" and not result.updates and not result.consent:
             sorry = self.t(self.schema["not_heard"]) if "not_heard" in self.schema else ""
@@ -97,17 +108,26 @@ class Session:
         self.transcript.append(f"ASSISTANT: {self.say}")
 
     def _edit_command(self, text: str) -> str | None:
-        """Field the speaker asked to change ("पति का नाम बदलो"), or None. The most specific alias
-        wins, so "पति का नाम" picks the husband's name rather than the applicant's name."""
-        low = text.lower()
-        if not set(tokens(low)) & set(self.schema.get("edit_words", [])):
+        """Field the speaker asked to change ("पति का नाम बदलो"), or None. Aliases match whole words
+        (a 4+ letter alias may also start a longer word, for Tamil case endings like பாஸ்புக்கில்).
+        The most specific alias wins, so "पति का नाम" picks the husband's name, not the applicant's."""
+        words = [w.lower() for w in tokens(text)]
+        # After "which detail is wrong?" a short answer naming a field ("गाँव") is enough; an answer with
+        # a value in it ("उम्र 72 है") is a correction and goes to the extractor instead.
+        naming_a_field = self.awaiting_edit and len(words) <= 3 and not any(c.isdigit() for c in text)
+        if not naming_a_field and not set(words) & set(self.schema.get("edit_words", [])):
             return None
-        hits = [(max(len(a) for a in f["aliases"] if a in low), f["key"])
-                for f in self.schema["fields"] if any(a in low for a in f.get("aliases", []))]
+
+        def matches(alias: str) -> bool:
+            return any(w == alias or (len(alias) >= 4 and w.startswith(alias)) for w in words)
+
+        hits = [(max(len(a) for a in f["aliases"] if matches(a)), f["key"])
+                for f in self.schema["fields"] if any(matches(a) for a in f.get("aliases", []))]
         if not hits:
             return None
         if len(hits) > 1:
             hits = [h for h in hits if h[1] != "name"] or hits     # "नाम" alone is the least specific
+        self.awaiting_edit = False
         return max(hits)[1]
 
     def _resolve_name_choice(self, text: str) -> bool:
@@ -117,6 +137,17 @@ class Session:
         if not f or f["id"] != "name_match":
             return False
         a, b = f["fields"]
+        if f.get("verdict") == "different":
+            # "Is this your own bank account?"  No -> drop the passbook name and ask for it again.
+            if answer(text) == "no":
+                self.values.pop(b, None)
+                self.meta.pop(b, None)
+                self.events.append({"t": time.time(), "type": "wrong_account", "field": b})
+                self.open_failure = None
+                return True
+            if answer(text) == "yes":
+                self.events.append({"t": time.time(), "type": "name_difference_acknowledged"})
+            return False
         # Aadhaar (field a) is the reference when both spellings sound the same.
         chosen = names.mentions(text, self.values[a], self.values[b])
         if chosen is None and f.get("verdict") == "spelling" and answer(text) == "yes":

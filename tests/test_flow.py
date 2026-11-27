@@ -278,3 +278,47 @@ def test_tamil_conversation_and_romanisation():
     s.add_turn("citizen", "ஆம், எல்லாம் சரி", ex)
     out = s.export()["portal_values"]
     assert out["name"] == "Selvi" and out["guardian_name"] == "Murugan" and out["village"] == "Melur"
+
+
+# ---------- review fixes ----------
+def test_no_to_readback_asks_which_detail():
+    s = _filled(bank_account_name="Ramvati")
+    s.add_turn("citizen", "नहीं", Scripted([ups(consent="no")]))
+    assert "कौन सी जानकारी गलत" in s.say and s.phase == "collect"
+    s.add_turn("citizen", "गाँव", Scripted([]))
+    assert "village" not in s.values and "गाँव" in s.say
+
+
+def test_edit_aliases_match_whole_words():
+    s = _filled(bank_account_name="Ramvati")
+    assert s._edit_command("नाम गलत आया") == "name"          # not income ("आय" inside "आया")
+    assert s._edit_command("village galat hai") == "village"
+
+
+def test_wrong_account_answer_reasks_passbook_name():
+    s = _filled(bank_account_name="Sunita")
+    assert "अपना बैंक खाता" in s.say
+    s.add_turn("citizen", "नहीं", Scripted([]))
+    assert "bank_account_name" not in s.values and "पासबुक" in s.say
+
+
+def test_int_fields_reject_ambiguous_numbers():
+    from backend.schema import coerce
+    age = load_schema("pension_up")["fields"][2]
+    assert coerce(age, "68") == 68 and coerce(age, "30,000") == 30000
+    for bad in ["65-70", "60 से 65"]:
+        try:
+            coerce(age, bad); assert False, bad
+        except ValueError:
+            pass
+
+
+def test_claude_failure_falls_back_to_rules():
+    from backend.extractor import ClaudeExtractor
+
+    class Broken(ClaudeExtractor):
+        def __init__(self): pass
+        def _call(self, user): raise ConnectionError("offline")
+
+    r = Broken().extract(load_schema("pension_up"), {}, "citizen", "मेरी उम्र 68 साल है", [], expected="age")
+    assert r.updates[0].key == "age" and r.updates[0].value == "68"

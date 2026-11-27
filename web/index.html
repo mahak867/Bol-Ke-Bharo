@@ -311,8 +311,10 @@ async function sendTurn(speaker, text) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, liveSpeaker = null;
 if (!SR) $("micNote").textContent = "This browser has no speech recognition. Use Chrome, or type below.";
-const REPEAT = /^(दोबारा|दुबारा|फिर से|फिरसे|क्या कहा|dobara|phir se|repeat|மீண்டும்|திரும்ப|என்ன சொன்னீங்க)/i;
-const PAUSE = /^(रुको|रुकिए|ruko|stop|बस|நிறுத்து|நில்லுங்க|போதும்)/i;
+// Whole words only: "बस्ती" (a district) must not trigger "बस".
+const END = "(?=$|[\\s।,.!?])";
+const REPEAT = new RegExp(`^(दोबारा|दुबारा|फिर से|फिरसे|क्या कहा|dobara|phir se|repeat|மீண்டும்|திரும்ப|என்ன சொன்னீங்க)${END}`, "i");
+const PAUSE = new RegExp(`^(रुको|रुकिए|ruko|stop|बस|நிறுத்து|நில்லுங்க|போதும்)${END}`, "i");
 
 function stopListening() {
   if (rec) { const r = rec; rec = null; r.onend = null; try { r.abort(); } catch (e) {} }

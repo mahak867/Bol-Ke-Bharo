@@ -4,11 +4,11 @@ Synthetic conversations (written by the team, not real recordings): Devanagari, 
 
 | Conversations | n | Fields correct | Name mismatches caught | False alarms | Completed to “हाँ” |
 |---|---|---|---|---|---|
-| Hindi (Devanagari) | 16 | 100.0% | 6/6 | 0 | 100% |
+| Hindi (Devanagari) | 16 | 97.9% | 6/6 | 0 | 100% |
 | Hinglish (Latin script) | 12 | 100.0% | 6/6 | 0 | 100% |
 | Tamil | 12 | 100.0% | 3/3 | 0 | 100% |
-| All tuned sets | 40 | 100.0% | 15/15 | 0 | 100% |
-| Held-out set 1 (Hindi, used once to find a gap) | 16 | 100.0% | 6/6 | 0 | 100% |
+| All tuned sets | 40 | 99.2% | 15/15 | 0 | 100% |
+| Held-out set 1 (Hindi, used once to find a gap) | 16 | 97.9% | 6/6 | 0 | 100% |
 | **Held-out set 2 (Hindi, never used for tuning)** | 16 | 75.0% | 6/6 | 10 | 100% |
 
 Offline engine, 0.1 ms per turn on this machine. Held-out set 2 fields most often wrong: name (16), bank_account_name (16), guardian_name (16).

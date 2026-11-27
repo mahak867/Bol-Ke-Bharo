@@ -69,6 +69,12 @@ button { font: inherit; padding: 8px 18px; margin-top: 12px; cursor: pointer; }
   status.textContent = "Filling from the confirmed conversation…";
   const filled = await bkbFill(data.portal_values, map, { onField: (k, el) => el.classList.add("filled") });
   status.textContent = `${filled.length} fields filled. Operator: check, enter the captcha and OTP, then submit.`;
+  if (data.warnings && data.warnings.length) {
+    const risk = document.createElement("p");
+    risk.className = "status"; risk.style.color = "#c00";
+    risk.textContent = "Open rejection risks, check before submitting: " + data.warnings.map((w) => w.label.en).join(", ") + ".";
+    status.after(risk);
+  }
   document.getElementById("captcha").focus();
 })();
 </script>

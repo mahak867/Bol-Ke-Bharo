@@ -34,10 +34,10 @@ def coerce(field: dict, raw):
     t = field["type"]
     s = str(raw).strip().translate(DIGITS)
     if t == "int":
-        digits = re.sub(r"[^\d]", "", s)
-        if not digits:
-            raise ValueError(f"not a number: {s!r}")
-        return int(digits)
+        numbers = re.findall(r"\d+(?:\.\d+)?", re.sub(r"(?<=\d),(?=\d)", "", s))   # "30,000" -> 30000
+        if len(numbers) != 1:   # "65-70" or "1.5 lakh" is ambiguous: ask again rather than guess
+            raise ValueError(f"need exactly one number: {s!r}")
+        return int(float(numbers[0]))
     if t == "bool":
         low = s.lower()
         if low in _YES:
