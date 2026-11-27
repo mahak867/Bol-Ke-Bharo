@@ -111,7 +111,7 @@ const card = (title, lines, foot) => `data:text/html;charset=utf-8,` + encodeURI
     "🔊 Spoken read-back, digit by digit, and a recorded “हाँ” before anything can be exported",
     "🔒 Full Aadhaar masked to last 4 digits · no audio stored · a person always does the final submit",
     "🧩 Every form is one JSON file: old-age and widow pension today · Hindi and Tamil today",
-    "📏 Measured: 100% of fields on 40 tuned test conversations, 75% on held-out wording (synthetic, see README)",
+    "📏 Measured honestly (synthetic tests): offline rules 100% on scripted wording, 42% on chatty held-out wording; Gemini/Claude handle free speech",
   ], "github.com/mahak867/Bol-Ke-Bharo"));
   await page.waitForTimeout(9000);
   const video = page.video();

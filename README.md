@@ -1,8 +1,9 @@
 # Bol Ke Bharo — बोल के भरो
 
 A voice co-pilot for people who fill forms for others (CSC operators, bank mitras, ASHA workers).
-The operator and the citizen talk naturally in Hindi or Hinglish. The form fills itself, the
-rejection guard catches mistakes, and everything is read back to the citizen for a spoken "हाँ".
+The operator and the citizen talk naturally in Hindi, Hinglish or Tamil. The form fills itself, the
+rejection guard catches mistakes, everything is read back to the citizen for a spoken "हाँ", the portal
+is filled for the operator to submit, and the citizen gets a slip of exactly what was filed.
 
 > Independent assistant, not a government service. Audio is never stored, Aadhaar is masked to
 > the last 4 digits, OTPs are never handled, and a person always does the final submit.
@@ -15,9 +16,9 @@ rejection guard catches mistakes, and everything is read back to the citizen for
 
 | Criterion | What Bol Ke Bharo does |
 |---|---|
-| **Voice-first experience** | Hands-free: after every spoken question it listens automatically. Silence gets a quiet retry, then a re-ask, then a pause. Voice commands: “दोबारा” (repeat), “रुको” (pause). Numbers are read back digit by digit. Nobody types. |
-| **India relevance** | Built for the ~5.67 lakh Common Service Centres (MeitY, Oct 2025) where operators fill pension forms for citizens who can't. Works in Devanagari Hindi and Hinglish, understands “तीस हजार” and “अड़सठ साल”, masks Aadhaar. |
-| **Working product** | Full pension application by voice, end to end, tested: 11 unit tests plus a browser test that completes a whole application with zero taps. Runs with no API key (offline extractor) or with Claude for free-form conversation. |
+| **Voice-first experience** | Hands-free: after every spoken question it listens automatically. Silence gets a quiet retry, then a re-ask, then a pause. Voice commands: “दोबारा” (repeat), “रुको” (pause), “गाँव बदलो” (change one answer). “नहीं” to the read-back asks which detail is wrong. Numbers are read back digit by digit. Nobody types. |
+| **India relevance** | Built for the ~5.67 lakh Common Service Centres (MeitY, Oct 2025) where operators fill pension forms for citizens who can't. Works in Hindi, Hinglish and Tamil, understands “तीस हजार” and “अड़सठ साल”, masks Aadhaar, prints a slip for the citizen and installs on an Android phone. |
+| **Working product** | Full pension application by voice, end to end, through to the portal and the slip: 32 unit tests plus a browser test that completes a whole application with zero taps. Runs with no API key (offline extractor) or with Gemini or Claude for free-form speech, falling back to offline if the API fails. Accuracy is measured and published honestly below. |
 | **Originality** | Not a chatbot that answers questions: it listens to a **two-person** conversation, fills a real form, and **catches rejection causes** at the counter. Its name matcher knows रामवती and Ramvati are the same name in two scripts, but Ramvati and Ram Wati will be rejected by a portal, and Ramvati vs Sunita may be the wrong bank account. Then it gets spoken consent before export. |
 
 ## Status
@@ -36,7 +37,7 @@ rejection guard catches mistakes, and everything is read back to the citizen for
 
 ## Measured results
 
-Offline engine (no API key) on scripted conversations. **These are synthetic, written by the team, not real recordings**, and the tuned sets flatter the engine. Held-out set 2 is the fair number. Real speech will score lower.
+Offline engine (no API key) on scripted conversations. **These are synthetic, written by the team, not real recordings**, and the tuned sets flatter the engine. Held-out set 3 is the fair number for the offline engine. Real speech will score lower.
 
 | Conversations | n | Fields correct | Name mismatches caught | False alarms | Completed to “हाँ” |
 |---|---|---|---|---|---|
