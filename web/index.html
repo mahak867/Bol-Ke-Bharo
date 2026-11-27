@@ -128,6 +128,7 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
   background: rgba(15, 18, 24, .9); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 22px; line-height: 1.4;
   text-align: center; display: none; }
 .cap b { color: #f0b84a; margin-right: 6px; }
+.cap i { display: block; font-style: normal; font-size: 17px; color: #cfd6e2; margin-top: 2px; }
 .cap.on { display: block; }
 @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -186,13 +187,13 @@ pre { background: var(--paper); padding: 12px; border-radius: 10px; overflow: au
 <script>
 const $ = (id) => document.getElementById(id);
 const CAPTIONS = new URLSearchParams(location.search).has("captions");
-function caption(who, text) {
+function caption(who, text, english) {
   if (!CAPTIONS || !text) return;
   const short = text.length > 170 ? text.slice(0, 170) + "…" : text;
-  $("cap").innerHTML = `<b>${esc(who)}</b>${esc(short)}`;
+  $("cap").innerHTML = `<b>${esc(who)}</b>${esc(short)}${english ? `<i>${esc(english)}</i>` : ""}`;
   $("cap").classList.add("on");
 }
-let state = null, timerStart = 0, timerHandle = null;
+let state = null, timerStart = 0, timerHandle = null, lastFilled = "";
 
 async function api(path, opts = {}) {
   const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
@@ -226,7 +227,8 @@ function setMode(m) {
 function speak(text, then) {
   stopListening();
   setMode("speaking");
-  caption("App:", text);
+  caption("App:", text, [lastFilled, state && text === state.say ? state.say_en : ""].filter(Boolean).join("  →  "));
+  lastFilled = "";
   if (!("speechSynthesis" in window) || !text) { then && then(); return; }
   speechSynthesis.cancel(); clearTimeout(ttsTimer);
   const u = new SpeechSynthesisUtterance(text);
@@ -267,6 +269,12 @@ function render(s) {
   const prev = state;
   state = s;
   $("say").textContent = s.say;
+  if (CAPTIONS && prev) {
+    const was = new Map(prev.fields.map((f) => [f.key, f.value]));
+    const changed = s.fields.filter((f) => f.value !== null && was.get(f.key) !== f.value)
+      .map((f) => `✓ ${f.label.en}: ${f.latin || f.value}`);
+    if (changed.length) lastFilled = changed.join(" · ");
+  }
   if (!prev || s.say !== prev.say) { noInput = 0; speak(s.say, afterSpeaking); }
   const filled = s.fields.filter((f) => f.value !== null).length;
   $("bar").style.width = `${Math.round(100 * filled / s.fields.length)}%`;

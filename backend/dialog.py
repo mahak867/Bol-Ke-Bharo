@@ -31,6 +31,7 @@ class Session:
         self.started = time.time()
         self.touched = time.time()
         self.say: str = ""
+        self.say_en: str = ""                     # English gloss of `say`, for captions
         self.expecting: str | None = None         # field the last question asked for
         self.open_failure: dict | None = None     # guard failure the last question asked about
         self.awaiting_edit = False                # after "नहीं" to the read-back: which field is wrong?
@@ -54,6 +55,7 @@ class Session:
                 self.phase, self.consent = "collect", None
             self.expecting, self.open_failure, self.pending_confirm = key, None, None
             self.say = self.phrases["again"] + " " + self.t(self.fields[key]["ask"])
+            self.say_en = f"Voice edit: asks for {self._label(key)} again"
             self.transcript.append(f"ASSISTANT: {self.say}")
             return
         if speaker == "citizen" and self._resolve_name_choice(text):
@@ -83,6 +85,7 @@ class Session:
                 and self.consent and self.consent["answer"] == "no":
             self.awaiting_edit = True
             self.say = self.phrases["which_wrong"]
+            self.say_en = "Citizen said no: asks which detail is wrong"
             self.transcript.append(f"ASSISTANT: {self.say}")
             return
 
@@ -91,6 +94,7 @@ class Session:
             sorry = self.t(self.schema["not_heard"]) if "not_heard" in self.schema else ""
             last = self.say[len(sorry):].strip() if sorry and self.say.startswith(sorry) else self.say
             self.say = f"{sorry} {last}".strip()
+            self.say_en = "Didn't catch that: asks again" 
             self.transcript.append(f"ASSISTANT: {self.say}")
             return
 
@@ -226,8 +230,15 @@ class Session:
         return [f["key"] for f in self.schema["fields"] if f.get("required") and f["key"] not in self.values]
 
     def next_prompt(self) -> str:
+        text, self.say_en = self._next_prompt()
+        return text
+
+    def _label(self, key) -> str:
+        return self.fields[key]["label"]["en"]
+
+    def _next_prompt(self) -> tuple[str, str]:
         if self.phase == "done":
-            return self.phrases["thanks"]
+            return self.phrases["thanks"], "Thanks: the application is ready for the portal"
 
         self.expecting, self.open_failure = None, None
         # 1. Rejection risks we haven't asked about with these values.
@@ -238,25 +249,26 @@ class Session:
                 self.open_failure = failure
                 if len(failure["fields"]) == 1:
                     self.expecting = failure["fields"][0]
-                return failure["message"]
+                return failure["message"], f"⚠ {failure['label']['en']}: asks the citizen to resolve it"
 
         # 2. Missing required fields.
         missing = self.missing()
         if missing:
             self.expecting = missing[0]
-            return self.t(self.fields[missing[0]]["ask"])
+            return self.t(self.fields[missing[0]]["ask"]), f"Asks for: {self._label(missing[0])}"
 
         # 3. Low-confidence values: confirm one at a time.
         for key in self.values:
             if self.meta[key]["confidence"] < LOW_CONFIDENCE:
                 self.pending_confirm = key
-                return self.phrases["heard"].format(value=self.spoken(key))
+                return self.phrases["heard"].format(value=self.spoken(key)), f"Checks an unclear answer: {self._label(key)}"
 
         # 4. Everything filled: read back for consent.
         self.phase = "readback"
         lines = [self.t(self.fields[f["key"]]["readback"]).format(value=self.spoken(f["key"]))
                  for f in self.schema["fields"] if f["key"] in self.values]
-        return " ".join([self.t(self.schema["done"]), *lines, self.t(self.schema["confirm"])])
+        return (" ".join([self.t(self.schema["done"]), *lines, self.t(self.schema["confirm"])]),
+                "Reads every answer back, digit by digit, and asks: is everything correct? Yes or no?")
 
     # ---------- output ----------
     def public_state(self) -> dict:
@@ -267,6 +279,7 @@ class Session:
             "can_you_hear": self.phrases["can_you_hear"],
             "phase": self.phase,
             "say": self.say,
+            "say_en": self.say_en,
             "fields": [
                 {"key": f["key"], "label": f["label"], "required": f.get("required", False),
                  "value": self.display(f["key"]) if f["key"] in self.values else None,
@@ -310,7 +323,7 @@ class Session:
 
     # ---------- snapshot, so any server instance can continue the conversation ----------
     _SNAPSHOT = ("id", "lang", "values", "meta", "phase", "consent", "pending_confirm", "asked_failures",
-                 "started", "touched", "say", "expecting", "open_failure", "awaiting_edit")
+                 "started", "touched", "say", "say_en", "expecting", "open_failure", "awaiting_edit")
 
     def to_dict(self) -> dict:
         d = {k: getattr(self, k) for k in self._SNAPSHOT}
@@ -342,6 +355,7 @@ class SessionStore:
         s = Session(schema, lang)
         greeting = s.t(schema["greeting"]) if "greeting" in schema else ""
         s.say = f"{greeting} {s.next_prompt()}".strip()
+        s.say_en = "Greets the citizen. " + s.say_en
         s.transcript.append(f"ASSISTANT: {s.say}")
         self._sessions[s.id] = s
         return s
