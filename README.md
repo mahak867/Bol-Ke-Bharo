@@ -80,7 +80,7 @@ node tests/e2e/handsfree.js              # browser test: full application, zero 
 node demo/make_video.js demo/            # re-record the demo video
 ```
 
-Settings: `BKB_MODEL` (default `claude-sonnet-5-5`), `BKB_EXTRACTOR=rules` to force offline mode.
+Settings: `BKB_EXTRACTOR` = `auto` (default: Claude if `ANTHROPIC_API_KEY` is set, else Gemini if `GEMINI_API_KEY` is set, else offline rules), `claude`, `gemini` or `rules`. Models: `BKB_MODEL` (default `claude-sonnet-5-5`), `BKB_GEMINI_MODEL` (default `gemini-2.5-flash`). Any API failure falls back to the offline rules for that turn.
 
 ## How it works
 

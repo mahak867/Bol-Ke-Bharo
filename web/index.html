@@ -285,7 +285,8 @@ function esc(x) { return String(x).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 
 async function newSession() {
   const info = await api("/api/info");
-  $("engine").textContent = info.extractor === "RuleExtractor" ? "time taken, offline mode" : "time taken, with Claude";
+  $("engine").textContent = "time taken, " + ({ RuleExtractor: "offline mode", ClaudeExtractor: "with Claude",
+    GeminiExtractor: "with Gemini" }[info.extractor] || info.extractor);
   const picked = $("formPick").value;
   $("formPick").innerHTML = info.forms.map((f) => `<option value="${f.id}">${esc(f.title[lang] || f.title.hi)}</option>`).join("");
   if (picked) $("formPick").value = picked;
