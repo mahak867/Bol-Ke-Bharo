@@ -180,6 +180,7 @@ def test_compare_verdicts():
     assert names.compare("Laxmi", "लक्ष्मी")["verdict"] == "spelling"
     assert names.compare("லட்சுமி", "Lakshmi")["verdict"] == "spelling"   # Tamil vs Hindi spelling
     assert names.compare("Ramvati", "Sunita")["verdict"] == "different"     # wrong account?
+    assert names.compare("सुनीता देवी", "सुनीता")["verdict"] == "spelling"  # a word missing
     assert names.mentions("राम वती सही है", "Ramvati") == "Ramvati"
 
 

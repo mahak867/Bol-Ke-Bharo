@@ -87,8 +87,31 @@ def heldout2(i: int):
                                           mobile=mobile, aadhaar_last4=last4, income=30000)
 
 
+def heldout3(i: int):
+    """Third held-out set, written after the everyday-speech words were added. Half Hindi, half Tamil.
+    Never used for tuning: its score is reported as it comes out."""
+    age = random.choice(list(AGE_WORDS))
+    mobile = random.choice("6789") + "".join(random.choice("0123456789") for _ in range(9))
+    last4 = "".join(random.choice("0123456789") for _ in range(4))
+    if i % 2:
+        name, bank = TA_NAMES[(i + 1) % len(TA_NAMES)]
+        husband, (district, village) = random.choice(HUSBANDS["ta"]), random.choice(PLACES["ta"])
+        lines = [f"சார், {name} தான் என் பேரு", f"வீட்டுக்காரர் {husband}", f"{age} வயசு ஆகுது", "நான் பெண்",
+                 f"{district} பக்கம்", f"{village} தான் எங்க ஊரு", f"நம்பர் {mobile}", f"கடைசி நாலு {last4}",
+                 f"பாஸ்புக்ல {bank} னு இருக்கு", "SBIN0001234 சார்", "முப்பதாயிரம் ரூபாய்", "ஆமா இருக்கு"]
+        return "ta", lines, name, bank, dict(guardian_name=husband, age=age, district=district, village=village,
+                                              mobile=mobile, aadhaar_last4=last4, income=30000)
+    name, bank = HI_NAMES[(i + 5) % len(HI_NAMES)]
+    husband, (district, village) = random.choice(HUSBANDS["hi"]), random.choice(PLACES["hi"])
+    lines = [f"अरे साहब, नाम {name} है", f"उनका नाम {husband} है", f"अभी {age} की हूँ", "लेडीज़",
+             f"{district} district", f"हमारा गाँव {village}", f"मोबाइल {mobile} है जी", f"last four {last4}",
+             f"बैंक वाली कॉपी में {bank}", f"IFSC SBIN0001234", "पूरे साल में तीस हजार", "जी, आधार है"]
+    return "hi", lines, name, bank, dict(guardian_name=husband, age=age, district=district, village=village,
+                                          mobile=mobile, aadhaar_last4=last4, income=30000)
+
+
 def run_one(style: str, i: int) -> dict:
-    lang, lines, name, bank, exp = (heldout(i) if style == "held" else heldout2(i) if style == "held2"
+    lang, lines, name, bank, exp = (heldout(i) if style == "held" else heldout2(i) if style == "held2" else heldout3(i) if style == "held3"
                                     else conversation(style, i))
     s = SessionStore().create(load_schema("pension_up"), lang)
     ex, turns, mismatch_flagged = RuleExtractor(), 0, False
@@ -117,14 +140,15 @@ def run_one(style: str, i: int) -> dict:
 
 
 def main():
-    styles = ["hi"] * 16 + ["lat"] * 12 + ["ta"] * 12 + ["held"] * 16 + ["held2"] * 16
+    styles = ["hi"] * 16 + ["lat"] * 12 + ["ta"] * 12 + ["held"] * 16 + ["held2"] * 16 + ["held3"] * 20
     t0 = time.perf_counter()
     results = [run_one(st, i) for i, st in enumerate(styles)]
     ms = (time.perf_counter() - t0) * 1000 / sum(r["turns"] for r in results)
     rows = []
     groups = [("Hindi (Devanagari)", {"hi"}), ("Hinglish (Latin script)", {"lat"}), ("Tamil", {"ta"}),
               ("All tuned sets", {"hi", "lat", "ta"}), ("Held-out set 1 (Hindi, used once to find a gap)", {"held"}),
-              ("**Held-out set 2 (Hindi, never used for tuning)**", {"held2"})]
+              ("Held-out set 2 (Hindi, used once to find a gap)", {"held2"}),
+              ("**Held-out set 3 (Hindi + Tamil, never used for tuning)**", {"held3"})]
     for label, sel in groups:
         rs = [r for r in results if r["style"] in sel]
         fields = [ok for r in rs for ok in r["correct"].values()]
@@ -135,7 +159,7 @@ def main():
                      100 * sum(r["done"] for r in rs) / len(rs)))
     misses = {}
     for r in results:
-        if r["style"] != "held2":
+        if r["style"] != "held3":
             continue
         for k, ok in r["correct"].items():
             if not ok:
@@ -143,7 +167,7 @@ def main():
     out = ["| Conversations | n | Fields correct | Name mismatches caught | False alarms | Completed to “हाँ” |",
            "|---|---|---|---|---|---|"]
     out += [f"| {a} | {n} | {acc:.1f}% | {caught} | {fa} | {done:.0f}% |" for a, n, acc, caught, fa, done in rows]
-    out.append(f"\nOffline engine, {ms:.1f} ms per turn on this machine. Held-out set 2 fields most often wrong: "
+    out.append(f"\nOffline engine, {ms:.1f} ms per turn on this machine. Held-out set 3 fields most often wrong: "
                + (", ".join(f"{k} ({v})" for k, v in sorted(misses.items(), key=lambda x: -x[1])) or "none") + ".")
     text = "\n".join(out)
     print(text)
@@ -152,7 +176,9 @@ def main():
         "Devanagari, Hinglish in Latin script and Tamil; digits in both scripts; numbers as words; filler words; "
         "Aadhaar/passbook spelling mismatches. The tuned sets were used while building the offline extractor, "
         "so they flatter it. Held-out set 1 found one general gap (fixed-format answers inside a sentence), "
-        "which was fixed; held-out set 2 was written after that and never used for tuning, so it is the fairest number. "
+        "which was fixed; set 2 found another (everyday words like बेटा, घरवाले), which was fixed in general form. "
+        "Set 3 was written after both fixes, in a different style, half in Tamil, and never used for tuning, "
+        "so it is the fairest number. "
         "Real recordings will score lower than both. Run `python -m eval.run_eval` to reproduce.\n\n" + text + "\n")
 
 

@@ -152,7 +152,11 @@ def compare(a: str, b: str) -> dict:
     la, lb = to_latin(a), to_latin(b)
     similarity = round(SequenceMatcher(None, sound_key(a), sound_key(b)).ratio(), 2)
     # Equal sound keys give similarity 1.0, so one threshold covers "sounds the same".
-    verdict = "same" if la == lb else "spelling" if similarity >= 0.8 else "different"
+    # One name being the other plus or minus a word ("Sunita" / "Sunita Devi") is a spelling problem
+    # for the portal, not a different person.
+    wa, wb = {sound_key(w) for w in la.split()}, {sound_key(w) for w in lb.split()}
+    subset = bool(wa and wb) and (wa <= wb or wb <= wa)
+    verdict = "same" if la == lb else "spelling" if similarity >= 0.8 or subset else "different"
     return {"verdict": verdict, "similarity": similarity, "a_latin": la, "b_latin": lb}
 
 

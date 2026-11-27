@@ -107,7 +107,15 @@ _FEMALE = {"mahila", "aurat", "female", "stree", "महिला", "औरत",
 _MALE = {"purush", "aadmi", "male", "mard", "पुरुष", "आदमी", "मर्द", "ஆண்", "aan"}
 _MULT = {"hazaar": 1000, "hazar": 1000, "हज़ार": 1000, "हजार": 1000, "lakh": 100000, "लाख": 100000}
 # Words that frame an answer but are not part of it ("मेरा नाम ___ है").
-_FILLER = set("""mera meri mere naam hai hain ji main hoon hun mein me se ka ki ke ko par likha hua tha
+# Everyday speech that frames an answer: polite address (बेटा, भैया, अम्मा, सार்), fillers (अरे, वो, अच्छा),
+# relation words for the husband/father question, and bank words, in Hindi, Hinglish and Tamil.
+_SPOKEN_EXTRAS = set("""beta beti bhaiya didi amma babu sahab madam arre are acha accha toh to wo woh hmm bas
+gharwale gharwala malik ji-haan khata khate account baras
+बेटा बेटी बिटिया भैया भइया दीदी बहन अम्मा अम्मी माँ बाबू बाबूजी साहब साहिब मैडम सर अरे अच्छा तो वो वह हम्म हाँजी
+घरवाले घरवाला मालिक पतिदेव स्वामी खाता खाते खाते में अकाउंट बरस वर्ष रहते हैं हम हमारा हमारी हमारे लिखा लिखे जी
+அம்மா ஐயா சார் மேடம் தம்பி அக்கா அண்ணா சரிங்க ஆமாங்க அப்புறம் அந்த இந்த வீட்டுக்காரர் அவர் அவங்க""".split())
+
+_FILLER = _SPOKEN_EXTRAS | set("""mera meri mere naam hai hain ji main hoon hun mein me se ka ki ke ko par likha hua tha
 gaon gaon ka jila zila district village rehta rehti rehte aata aati pati pita pitaji father husband
 passbook bank aadhaar card ka wala wali haan
 मेरा मेरी मेरे नाम है हैं जी मैं हूँ हूं हु में से का की के को पर लिखा हुआ था गाँव गांव गाव जिला ज़िला जिले
@@ -141,7 +149,7 @@ class RuleExtractor:
         text = segment.translate(DIGITS)
         toks = tokens(segment)
         low = [t.lower() for t in toks]
-        if m := re.search(r"(\d{2,3})\s*(saal|sal|years|varsh|साल|वर्ष|வயது|வருடம்)", text.lower()):
+        if m := re.search(r"(\d{2,3})\s*(saal|sal|years|varsh|baras|साल|वर्ष|बरस|வயது|வருடம்)", text.lower()):
             ups.append(FieldUpdate(key="age", value=m.group(1), confidence=0.9, evidence=m.group(0)))
         else:
             for i, t in enumerate(low[:-1]):

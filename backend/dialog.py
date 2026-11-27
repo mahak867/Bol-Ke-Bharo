@@ -137,7 +137,10 @@ class Session:
         if not f or f["id"] != "name_match":
             return False
         a, b = f["fields"]
-        if f.get("verdict") == "different":
+        # Naming one of the two spellings settles it, whatever the verdict.
+        # Aadhaar (field a) is the reference when both spellings sound the same.
+        chosen = names.mentions(text, self.values[a], self.values[b])
+        if chosen is None and f.get("verdict") == "different":
             # "Is this your own bank account?"  No -> drop the passbook name and ask for it again.
             if answer(text) == "no":
                 self.values.pop(b, None)
@@ -148,9 +151,7 @@ class Session:
             if answer(text) == "yes":
                 self.events.append({"t": time.time(), "type": "name_difference_acknowledged"})
             return False
-        # Aadhaar (field a) is the reference when both spellings sound the same.
-        chosen = names.mentions(text, self.values[a], self.values[b])
-        if chosen is None and f.get("verdict") == "spelling" and answer(text) == "yes":
+        if chosen is None and answer(text) == "yes":
             chosen = self.values[a]
         if chosen is None:
             return False
