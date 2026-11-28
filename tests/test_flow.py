@@ -386,3 +386,15 @@ def test_conversation_survives_a_fresh_server_instance(monkeypatch):
     forged = base64.urlsafe_b64encode(json.dumps(d).encode()).decode() + "." + mac
     assert c.post(f"/api/sessions/{sid}/export", json={"snapshot": forged}).status_code == 404
     assert c.post(f"/api/sessions/{sid}/export", json={"snapshot": s["snapshot"]}).status_code == 409  # genuine, not confirmed yet
+
+
+def test_codes_spoken_letter_by_letter():
+    ex = RuleExtractor()
+    schema = load_schema("pension_up")
+    for said, want in [("एस बी आई एन ज़ीरो ज़ीरो ज़ीरो वन टू थ्री फोर", "SBIN0001234"),
+                       ("एसबीआईएन 0001234", "SBIN0001234"),
+                       ("S B I N डबल ज़ीरो ज़ीरो एक दो तीन चार", "SBIN0001234")]:
+        r = ex.extract(schema, {}, "citizen", said, [], expected="ifsc")
+        assert [u.value for u in r.updates if u.key == "ifsc"] == [want], said
+    r = ex.extract(schema, {}, "citizen", "नौ आठ सात छह पांच चार तीन दो एक शून्य", [], expected="mobile")
+    assert [u.value for u in r.updates if u.key == "mobile"] == ["9876543210"]

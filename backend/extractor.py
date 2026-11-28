@@ -11,7 +11,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from .lexicon import DIGITS, YES, answer, tokens
+from .lexicon import DIGITS, YES, answer, spelled, tokens
 
 MODEL = os.environ.get("BKB_MODEL", "claude-sonnet-5-5")
 GEMINI_MODEL = os.environ.get("BKB_GEMINI_MODEL", "gemini-2.5-flash")
@@ -203,7 +203,7 @@ class RuleExtractor:
             ups.append(FieldUpdate(key="mobile", value=m.group(1), confidence=0.9, evidence=m.group(1)))
         if m := re.search(r"XXXX XXXX (\d{4})", text):
             ups.append(FieldUpdate(key="aadhaar_last4", value=m.group(1), confidence=0.95, evidence=m.group(0)))
-        if m := re.search(r"([A-Z]{4}0[A-Z0-9]{6})", text.upper().replace(" ", "")):
+        if m := re.search(r"([A-Z]{4}0[A-Z0-9]{6})", text.upper().replace(" ", "") + " " + "".join(spelled(segment))):
             ups.append(FieldUpdate(key="ifsc", value=m.group(1), confidence=0.85, evidence=m.group(1)))
 
         consent = answer(segment) if speaker == "citizen" else None
@@ -222,9 +222,12 @@ class RuleExtractor:
                 # A fixed-format answer inside a sentence: try each word, then runs of joined words
                 # ("आख़िरी चार 9012", "SBIN 000 1234").
                 pattern = re.compile(field["pattern"])
-                runs = [re.sub(r"[\s-]", "", " ".join(toks[i:j])).upper() if field["key"] == "ifsc"
-                        else re.sub(r"[\s-]", "", " ".join(toks[i:j]))
-                        for i in range(len(toks)) for j in range(i + 1, len(toks) + 1)]
+                # Codes may be spoken letter by letter ("एस बी आई एन ज़ीरो…"): try the spelled form too.
+                runs = []
+                for words in (toks, spelled(segment)):
+                    runs += [re.sub(r"[\s-]", "", "".join(words[i:j])).upper() if field["key"] == "ifsc"
+                             else re.sub(r"[\s-]", "", "".join(words[i:j]))
+                             for i in range(len(words)) for j in range(i + 1, len(words) + 1)]
                 value = next((r for r in runs if pattern.fullmatch(r)), None)
                 conf = 0.85
             elif field["type"] == "string" and not field.get("pattern"):
